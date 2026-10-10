@@ -1,6 +1,7 @@
 {
-  "appVersion": "1.3.0",
-  "preparedAt": "2026-10-10T13:08:07.886594+00:00",
+  "appVersion": "1.4.0",
+  "mappingVersion": 2,
+  "preparedAt": "2026-10-10T13:51:18.266946+00:00",
   "engineeringComplete": true,
   "cloudPublished": false,
   "liveRedisVerified": false,
@@ -10,9 +11,9 @@
   "notionWritesPerformed": false,
   "authMode": "public",
   "automatedTests": {
-    "passed": 50,
+    "passed": 74,
     "failed": 0,
-    "data": "synthetic and mocked Redis REST"
+    "data": "synthetic real-schema-shaped fixtures and mocked Redis REST"
   },
   "browserChecks": {
     "viewports": [
@@ -21,12 +22,14 @@
       "390x850",
       "320x850"
     ],
-    "passed": 20,
+    "passed": 26,
     "javascriptErrors": [],
-    "data": "35 synthetic records, no live Notion/Redis; sync responses intercepted locally"
+    "data": "35 synthetic records; no live Notion/Redis"
   },
   "cacheSchemaVersion": 1,
   "cacheNamespace": "notion-calendar:v1:snapshot",
+  "automaticOldMappingFullRebuild": true,
+  "oldSnapshotRetainedUntilCommit": true,
   "graphCacheTouched": false,
   "cronEnabledByDefault": false
 }
