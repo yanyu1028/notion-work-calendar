@@ -1,2 +1,3 @@
-import {checkOrigin,readBody,verifyPassword,setSession,loginRate} from '../lib/auth.mjs';import {json,failure,AppError} from '../lib/config.mjs';
-export default async function handler(req,res){try{if(req.method!=='POST')throw new AppError('METHOD_NOT_ALLOWED',405);checkOrigin(req);await loginRate(req);const body=await readBody(req);if(!await verifyPassword(body.password))throw new AppError('INVALID_CREDENTIALS',401);setSession(res);res.setHeader('Cache-Control','private, no-store');res.statusCode=303;res.setHeader('Location','/');res.end();}catch(e){if(['INVALID_CREDENTIALS','RATE_LIMITED'].includes(e.message)){res.statusCode=303;res.setHeader('Cache-Control','private, no-store');res.setHeader('Location','/login?error='+e.message);res.end();}else failure(res,e);}}
+import {json} from '../lib/config.mjs';
+// Tombstone endpoint retained so replacing existing GitHub files is enough.
+export default function handler(req,res){json(res,410,{error:'LOGIN_REMOVED',message:'应用登录已移除，请直接打开首页。'});}
