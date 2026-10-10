@@ -1,10 +1,10 @@
-# 免应用登录版上传步骤
+# v1.3.0 整体优化版上传步骤
 
 ## 1. 替换代码
 
 打开已有日历 GitHub 仓库的 Vercel Production 分支（通常 main）。解压本包，将 notion-work-calendar-deploy 里面的内容通过 Add file → Upload files 覆盖到原目录，Commit changes。不是上传 zip 本身。
 
-根目录应看到 package.json、vercel.json、server.mjs、api、lib、web。若项目 Root Directory 以前是子目录，就覆盖该子目录内容。必须覆盖 api/login.mjs、api/logout.mjs、api/session.mjs、lib/auth.mjs、web/login.html 等旧登录相关文件；新版将旧入口退役，无需手工删除它们。
+根目录应看到 package.json、vercel.json、server.mjs、api、lib、web。若项目 Root Directory 以前是子目录，就覆盖该子目录内容。新版含新增 web/ui.js，务必一起上传；它不是可选文件。必须覆盖 api/login.mjs、api/logout.mjs、api/session.mjs、lib/auth.mjs、web/login.html 等旧登录相关文件；新版将旧入口退役，无需手工删除它们。
 
 不要上传实际 .env.local、真实 Token、口令或 node_modules。包内 .env.example 只有空密钥与已知源 ID 示例。
 
@@ -33,9 +33,9 @@ Framework Other、Node 22.x、Build npm run build、Output 默认（不要设 we
 
 ## 4. 数据验收
 
-若有旧日历缓存直接显示，再检查同步；只有旧关系图缓存时，从 Notion 首次同步建立日历独立缓存。
+若有旧日历缓存直接显示，后台静默检查；只有旧关系图缓存时，从 Notion 首次同步建立日历独立缓存。
 
-- 同步数据 → 诊断：appVersion 1.2.0，authMode public，cacheMode redis。
+- 同步数据右侧下拉 → 诊断信息：appVersion 1.3.0，authMode public，cacheMode redis。
 - 检查项目/任务/笔记记录、原页面链接与筛选，刷新仍能读取。
 - /login 不再显示口令框；无 APP_PASSWORD 也可访问日历。
 - 原关系图应用与 Redis 数据保持正常。
@@ -44,7 +44,7 @@ Framework Other、Node 22.x、Build npm run build、Output 默认（不要设 we
 
 500 Invalid export：确认 server.mjs 新版默认导出以及 vercel.json 已覆盖，部署的是新版 commit。
 
-BOOTSTRAP_REQUIRED：没有有效日历缓存，会尝试自动同步；失败时按提示检查 Notion/Redis。
+BOOTSTRAP_REQUIRED：没有有效日历缓存，会尝试自动同步；失败时从同步按钮右侧下拉打开诊断，检查 Notion/Redis；页面不弹出状态提示。
 
 DATA_SOURCE_IDS_REQUIRED / NOTION_TOKEN_REQUIRED：核对必需变量及 Production 范围，修改后重新部署。
 
@@ -61,3 +61,15 @@ ORIGIN_REJECTED：已有 APP_URL 和正在访问域名不一致；修正 APP_URL
 这个版本有意公开日历数据。页面地址保密不是访问控制，Origin/限流不能阻止直接客户端读取公开 API。若以后需要私有，启用确实覆盖 Production 的平台保护，或回滚恢复应用登录；不要只依赖 Notion 原页面私有权限。
 
 缓存 schema/fingerprint 与旧日历保持兼容，不清库。回滚旧应用需同时恢复其原认证配置。此包没有执行任何云端配置或真实数据库操作。
+
+## 界面验收（本次重点）
+
+1. 首页没有数据版本/连接状态横幅；搜索、周期、日期方式、筛选、原箭头周期导航、“现在”、同步在同一排。窄屏横向滚动操作条，而非整个页面。
+2. 点击搜索内设置图标，调整选项仍保持展开；点空白处或 Esc 收起。输入提示随选项变化；已有个人搜索设置继续保留。
+3. 切换周期/日期方式选择后收起；筛选面板内部修改不收起。仅笔记时状态禁用，切回任务/项目后原状态条件还在。
+4. 视图设置仍在卡片右上角；原定位/排序/字段功能保留，主题在此面板中。
+5. “现在”按实际北京时间定位；右栏默认空状态居中且到底，选中日期 → 事项 → 关联 → 返回正常。
+6. 同步结果在诊断查看；技术详情 appVersion=1.3.0、authMode=public、cacheMode=redis。旧快照最近完成摘要为空不代表失败，下次完成同步后有记录。
+7. 原图谱仍可使用。无需新 Redis、应用口令或新增变量；不必执行完整对账才算部署成功。
+
+失败时不要清 Redis。优先检查新 commit、根目录、web/ui.js 上传与环境变量 Production 范围，然后从诊断获取错误码。若要回滚，选择上一版 Ready 部署；可选诊断字段兼容旧日历读取，无需改缓存键。
