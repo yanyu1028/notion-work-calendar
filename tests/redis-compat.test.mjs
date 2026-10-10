@@ -1,0 +1,10 @@
+import test from 'node:test';import assert from 'node:assert/strict';
+import {get,put,rateLimit} from '../lib/store.mjs';import {fingerprint} from '../lib/config.mjs';import {validSnapshot} from '../lib/sync.mjs';
+process.env.NODE_ENV='production';process.env.KV_REST_API_URL='https://synthetic-redis.example.test';process.env.KV_REST_API_TOKEN='synthetic-only-not-real-token';delete process.env.UPSTASH_REDIS_REST_URL;delete process.env.UPSTASH_REDIS_REST_TOKEN;process.env.CALENDAR_CACHE_KEY='notion-calendar:v1:snapshot';
+const graphKey='notion-graph:v7.6:snapshot',graphValue=JSON.stringify({storage:{schemaVersion:3,appVersion:'7.8.3'},nodes:[],edges:[]}),store=new Map([[graphKey,graphValue]]),calls=[];
+const originalFetch=globalThis.fetch;
+globalThis.fetch=async(url,options)=>{assert.equal(url,process.env.KV_REST_API_URL);assert.equal(options.headers.Authorization,'Bearer '+process.env.KV_REST_API_TOKEN);const args=JSON.parse(options.body);calls.push(args);let result;if(args[0]==='SET'){store.set(args[1],args[2]);result='OK';}else if(args[0]==='GET')result=store.get(args[1])??null;else if(args[0]==='EVAL')result=1;else throw Error('unexpected command');return{ok:true,json:async()=>({result})};};
+test.after(()=>{globalThis.fetch=originalFetch;});
+test('existing Vercel KV REST variables support calendar reads/writes',async()=>{await put('data',{schemaVersion:1,fixture:true});assert.deepEqual(await get('data'),{schemaVersion:1,fixture:true});});
+test('existing calendar v1 snapshot remains valid across app upgrade',async()=>{const snapshot={schemaVersion:1,fingerprint:fingerprint(),payload:{records:[],meta:{version:'online-1.0.0'}},rawRecords:{}};await put('data',snapshot);assert.deepEqual(await validSnapshot(),snapshot);});
+test('calendar commands preserve original graph cache and use isolated keys',async()=>{await rateLimit('test',8,60);assert.equal(store.get(graphKey),graphValue);for(const args of calls){const keys=args[0]==='EVAL'?args.slice(3,3+Number(args[2])):[args[1]];for(const key of keys)assert.ok(key.startsWith('notion-calendar:v1:snapshot:'));}assert.ok(!calls.some(args=>args[0]==='FLUSHDB'||args[0]==='FLUSHALL'));});
