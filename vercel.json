@@ -1,6 +1,38 @@
 {
- "version":2,"buildCommand":"npm run build",
- "functions":{"api/site.mjs":{"maxDuration":30,"includeFiles":"web/**"},"api/sync.mjs":{"maxDuration":60},"api/calendar.mjs":{"maxDuration":30},"api/session.mjs":{"maxDuration":30},"api/login.mjs":{"maxDuration":30},"api/logout.mjs":{"maxDuration":30},"api/diagnostics.mjs":{"maxDuration":30}},
- "routes":[{"src":"^/api/(calendar|sync|session|login|logout|diagnostics)/?$","dest":"/api/$1"},{"src":"^/(.*)$","dest":"/api/site?path=$1"}],
- "crons":[{"path":"/api/sync","schedule":"0 2 * * *"}]
+  "version": 2,
+  "buildCommand": "npm run build",
+  "functions": {
+    "api/site.mjs": {
+      "maxDuration": 30,
+      "includeFiles": "web/**"
+    },
+    "api/sync.mjs": {
+      "maxDuration": 60
+    },
+    "api/calendar.mjs": {
+      "maxDuration": 30
+    },
+    "api/session.mjs": {
+      "maxDuration": 30
+    },
+    "api/login.mjs": {
+      "maxDuration": 30
+    },
+    "api/logout.mjs": {
+      "maxDuration": 30
+    },
+    "api/diagnostics.mjs": {
+      "maxDuration": 30
+    }
+  },
+  "routes": [
+    {
+      "src": "^/api/(calendar|sync|session|login|logout|diagnostics)/?$",
+      "dest": "/api/$1"
+    },
+    {
+      "src": "^/(.*)$",
+      "dest": "/api/site?path=$1"
+    }
+  ]
 }

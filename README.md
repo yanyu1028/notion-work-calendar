@@ -1,56 +1,44 @@
-# Notion 工作日历 · 在线版 1.0.0
+# Notion 工作日历 · 在线版 1.1.0（简化部署）
 
-从已确认的日历 v15 适配，采用 v7.8.3 部署包的 GitHub + Vercel + Notion API + Upstash Redis 路线。**独立工程，不覆盖关系图谱，不扫描正文，不修改 Notion。**
+在已连接 Notion 和旧 Redis 的 Vercel 项目中，只需新增一个服务端环境变量 `APP_PASSWORD`。无需在电脑运行 npm、生成哈希或配置会话密钥。访问口令至少 14 字符，推荐 20 字符以上的随机口令；不要使用公开示例或重复使用其他账户密码。
 
-## 已实现
+## 上传 GitHub
 
-- 保留周/月/季/年、开始/截止/连续、搜索、节点/状态、定位、排序、字段、热力、分类统计和详情。
-- HTML/CSS/JS 拆分；生产源码不内嵌真实记录。Chart.js 固定 4.4.1，由 npm build 生成本地受保护资源。
-- 只读三库 API；日期口径独立；笔记读取 `NOTE_DATE_PROPERTY`（默认“创建日期”），不偷偷用页面系统创建时间替代。
-- Redis 缓存优先；五分钟自动检查限频；完整分页；增量水位回退两秒；每日完整三库对账；原子发布有效快照。
-- 分批同步检查点持久化，包括超过 25 个关联的属性分页；失败不发布部分数据，继续时重试同一游标。
-- 所有者令牌锁及原子快照/检查点提交；生产不回退到内存。
-- 私人单用户口令登录：scrypt 哈希、8 小时签名 HttpOnly 会话、CSRF/Origin 校验、登录和同步限频。
-- 页面、JS、图表资源、数据、诊断都受保护；只有登录页和无数据样式公开。Cron 独立 Bearer 认证，没有 manual 参数绕过。
-- 同步保留周期、筛选、搜索与详情；确认删除所选记录后关闭详情；不加入“仅页面”或重复热力筛选。
+解压后，将 `notion-work-calendar-deploy` 文件夹里的文件/子文件夹上传到原 GitHub 仓库根目录，覆盖同名文件。根目录应看到 `package.json`、`vercel.json`、`api/`、`lib/`、`web/`。不能只上传 zip 或 web 文件夹。不要上传真实 .env 文件、令牌、口令或 node_modules。
 
-## 开始
+## 保留已有配置
 
-需要 Node 22 或 24、npm、Notion 只读 Integration、Upstash Redis。
+保留 NOTION_API_TOKEN、三个 *_DATA_SOURCE_ID、NOTE_DATE_PROPERTY、CALENDAR_CACHE_KEY、Vercel Storage 自动注入的 KV_REST_API_URL 和 KV_REST_API_TOKEN。
 
-```bash
-npm ci
-npm run build
-cp .env.example .env.local
-npm run credentials
-# 在 .env.local 填入密钥和配置，不提交 Git
-npm test
-npm run dev
-```
+新增 `APP_PASSWORD`（Production），Value 填自己设置的强访问口令，不加引号。不需 APP_PASSWORD_HASH / SESSION_SECRET / CRON_SECRET。旧哈希和会话变量仍兼容；设置 APP_PASSWORD 时优先采用简化模式。
 
-`npm run credentials` 在本地交互终端读取不回显口令，输出口令哈希和随机会话/Cron 密钥。不要把口令当命令行参数，不要在聊天中提交密钥。
+Vercel 默认域名自动识别；自定义域名使用 APP_URL=https://实际域名，末尾不加路径。Production 支持 Vercel 提供的生产域名和本次部署域名，Preview 不自动信任 Production 域名。已有 APP_URL 会严格限制到该域名；如填错，修改或删除后重新部署。
 
-详情见 `DEPLOYMENT.md`。本工程的缓存名为 `CALENDAR_CACHE_KEY`，只允许 `notion-calendar:` 前缀，避免误用关系图谱缓存。
+## Redis 和数据兼容范围（重要）
 
-## 同步语义
+- 复用原 `notion-graph-cache` 数据库实例与 REST 读写凭据，不用新建、不用付费升级来安装本包。
+- 日历仅写 `notion-calendar:v1:snapshot:*`；原图谱 `notion-graph:*` 保持原样，不迁移、不删除、不覆盖。不允许将 CALENDAR_CACHE_KEY 设置成图谱键。
+- 1.0.0 日历缓存 schema=1 与 source fingerprint 保持不变：同数据源、同笔记日期属性、同缓存键可继续读取。
+- 原关系图 7.8.3 的 graph schema=3 不是日历 schema=1，本包不会冒充能直接读取 graph nodes/edges 为完整日历。日历首次从授权 Notion 数据库同步真实记录，单独保存。
+- 两个应用不会自动同步彼此的缓存；共享 Redis 的容量和请求额度。是否收费由现有数据库套餐/使用量决定，本包不调整套餐。
+- KV_URL / REDIS_URL / read-only token 不能代替 REST 读写变量。代码兼容旧 UPSTASH_REDIS_REST_URL / TOKEN；非空旧值优先，因此错误旧值应删除。不要混用不同实例的 URL/token。
 
-页面先读取有效缓存，再检查后台更新。无缓存先初始化，不提供演示数据。每次函数预算 40 秒，锁有效期 75 秒；成功的分页步骤写入检查点。单次未完成时显示 paused，并由浏览器继续；前端本轮最多续传三分钟，之后再次点击可继续。浏览器关闭不会丢失进度，但**不意味着后台会连续运行**：剩余任务由下一次 Cron/打开页面/手动同步继续。
+## Vercel
 
-Cron 每日完整对账；手动同步默认增量，距离上次完整对账超过六小时也执行全量；诊断中可主动“完整对账三库”。只有三库全部完成查询及关联分页，才发布新快照并清理真正离开数据源的记录。业务状态“已归档”仍保留；Notion 实际删除、归档为不可查询页面或移出数据源才在全量对账中移除。
+Framework: Other；Build: npm run build；Root: 仓库根目录（或实际含 package.json 的目录）；Output Directory: 保留 Other 默认，不改成 web；Node: 22.x。依赖由 Vercel 自动安装。本地无需执行命令。
 
-`generatedAt` 是成功发布时间；`watermark` 是本轮开始时间。打开已有缓存显示快照时间，不伪称实时推送或强一致快照。
+部署 Ready 后，用正式域名打开，登录 → 同步数据 → 诊断（cacheMode 应为 redis）。首次同步可能分段完成，失败保留旧缓存。授权不足要在 Notion 的数据库 Connections 添加对应集成。
 
-## 日期与关系
+## 同步方式
 
-项目/任务优先读取“开始日期”“截止日期”，日期范围属性为显式替代来源；缺开始日期不会拿截止日期填充。笔记只读指定属性，支持 date、formula.date、created_time 类型，不扫描正文摘要；无该属性则缺日期。带时间日期按 Asia/Shanghai 转换，日期型值原样保留。
+本包默认打开页面后检查同步、提供手动同步；长时间不打开不会保证数据自动更新。为了免填额外变量，默认 vercel.json 不再启用每日 Cron。可选配置见 DEPLOYMENT.md；启用 Cron 仍须独立 CRON_SECRET，不以访问口令充当 Cron 密钥。
 
-任务关联项目、笔记关联项目/任务及反向属性合并去重；笔记可从关联任务继承所属项目，并明确保留直接/继承项目数组。关联但未授权或未进入三库的记录仅保留 URL，不编造名称。
+## 安全
 
-## 安全边界与限制
+服务端环境变量保存 APP_PASSWORD；服务器用用途隔离、按日历命名空间限定的 scrypt 派生签名密钥，不把口令存入 Redis或发送给浏览器。口令变更并重新部署后旧会话失效；使用强口令尤其重要（Cookie 签名安全依赖口令强度）。兼容原哈希/独立会话密钥模式。HttpOnly Cookie、8 小时会话、CSRF、Origin、Redis 频率限制和页面/数据访问保护保留。不是多用户登录/MFA/SSO。
 
-- 默认方案仅适合一个私人所有者，不提供多人分级权限、SSO、MFA 或企业用户审计。团队共享前应换成组织身份认证，不建议共享访问口令。
-- API Token 必须是你自己为本应用配置的真实 Notion Integration Secret；不要把代理会话的凭证或 MCP 连接当成生产密钥。
-- 前端不使用 IndexedDB 保存工作记录；浏览器设置保存在 localStorage，退出时清除本应用设置。无正文递归/Worker。
-- 会话签名在服务端校验；退出清除当前 Cookie。需要使所有已签发 Cookie 失效时轮换 SESSION_SECRET。
-- 默认 SameSite=Lax；Notion iframe 可能无法保持会话。可在 HTTPS 下显式选择 None，但第三方 Cookie 拦截仍可能影响嵌入，不承诺全平台兼容。
-- 真实 Notion、Redis、Vercel 和 Notion iframe 尚需部署后验证。自动测试使用合成记录，浏览器回归可以使用仅本地的历史快照，不将它打包为生产数据。
+不读取正文、不递归扫描普通页面、不修改 Notion。不内嵌历史/演示工作数据、不提供公开数据端点。Notion iframe 受第三方 Cookie 限制，登录失败时在新窗口打开。
+
+## 验证
+
+见 VALIDATION.md。本包已做本地合成测试；未连接你的真实 Redis、Notion、GitHub 或 Vercel。交付压缩包不代表已经上线。

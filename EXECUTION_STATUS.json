@@ -1,30 +1,25 @@
 {
-  "appVersion": "1.0.0",
-  "preparedAt": "2026-10-10T09:36:31.847023+00:00",
+  "appVersion": "1.1.0",
+  "preparedAt": "2026-10-10T11:43:53.504984+00:00",
   "engineeringComplete": true,
   "cloudPublished": false,
   "liveNotionVerified": false,
   "liveRedisVerified": false,
-  "githubRepositoryCreated": false,
-  "vercelProjectCreated": false,
+  "githubChangesPerformed": false,
+  "vercelChangesPerformed": false,
   "notionWritesPerformed": false,
   "automatedTests": {
-    "passed": 32,
+    "passed": 45,
     "failed": 0,
-    "data": "synthetic"
+    "data": "synthetic and mocked Redis REST"
   },
   "browserChecks": {
-    "passed": 25,
-    "javascriptErrors": [],
-    "data": "isolated local historical fixture, excluded from production package"
+    "performed": false,
+    "reason": "Playwright unavailable in current local environment"
   },
-  "dependencyAudit": "0 vulnerabilities reported by npm audit",
-  "blockedOn": [
-    "Vercel login",
-    "GitHub repository connection",
-    "Notion Integration Secret and three-source authorization",
-    "Redis REST URL and token",
-    "Application login credentials and production origin"
-  ],
-  "cacheNamespace": "notion-calendar:v1:snapshot"
+  "dependencyAudit": "npm ci reported 0 vulnerabilities",
+  "cacheNamespace": "notion-calendar:v1:snapshot",
+  "cacheSchemaVersion": 1,
+  "graphDataPolicy": "isolated, never read or write graph snapshot keys",
+  "cronEnabledByDefault": false
 }

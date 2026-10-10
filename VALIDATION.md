@@ -1,9 +1,16 @@
-# 验证记录
+# v1.1.0 验证记录
 
-- 32 项 Node 自动测试通过，0 失败；覆盖日期、属性分页、缺字段、增量水位、断点恢复、全量删除保护、原子提交、锁所有权、身份验证、CSRF、目录访问和 Vercel 根路由参数。使用合成数据。
-- 25 项隔离本地浏览器检查通过，0 页面 JavaScript 异常；覆盖登录、在线初始化、v15 筛选/定位、更新保留状态、删除所选记录、诊断 Esc、失败保留数据和移动端柱形数值。使用历史只读快照，未把快照或截图放进生产包。
-- 已目视检查明亮月历、暗黑年热力图、390px 登录/热力/诊断/纵向图；正式 Notion iframe 未验证。
-- npm audit 报告 0 已知漏洞。
-- 生产前端不含历史记录标题或内嵌 records 数据；包不含真实 Token、口令或 .env.local。
-- 未创建 GitHub 仓库或 Vercel 项目，未配置真实 Redis，未执行真实 Notion 初始化；不能将本地结果称为上线成功。
-- Redis Lua、Vercel Serverless/Cron、集成授权、实际数据库字段和 iframe Cookie 仍需线上验收。
+## 本次实际完成
+
+- 45 项 Node 合成测试通过，0 失败。包含旧模式 HTTP 回归、单 APP_PASSWORD HTTP 登录/会话/诊断、新模式签名/口令轮换、弱口令拒绝、Origin/CSRF、自动识别 Vercel 生产域名/Preview 隔离。
+- 旧 Redis 兼容测试使用模拟 REST 服务：KV_REST_API_URL/TOKEN 正确认证；日历读写键限定在 notion-calendar 命名空间；原 graph schema=3 数据保持原样；已有日历 schema=1/fingerprint 可读取。
+- 原有日期/分页/增量/断点/锁/原子提交/失败保留缓存测试保留。
+- npm ci 与 npm run build 成功；安装审计报告 0 漏洞。
+- API、前端和脚本语法检查通过。
+- 归档不包含真实环境文件、node_modules、历史数据快照或生成的 vendor 脚本（Vercel 构建时生成）。
+
+## 未完成的线上验收
+
+没有操作用户的 GitHub/Vercel/Redis/Notion。本次未连接真实旧 Redis，未测试 Redis 服务端 Lua、实际源授权或 Vercel 域名系统变量；不可把模拟测试称为真实服务兼容验证。本地浏览器流程测试因当前环境缺少 Playwright 依赖未能执行，未将旧版本浏览器测试冒充本次结果。
+
+部署后需要用户验证：正式域名登录、首次同步、诊断 cacheMode=redis/version=1.1.0、三类原页面链接、刷新、无痕访问保护，以及原关系图仍正常。第三方 Cookie/Notion iframe 仍需实际浏览器验收。
