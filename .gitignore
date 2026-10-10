@@ -1,0 +1,9 @@
+node_modules/
+.env
+.env.*
+!.env.example
+.vercel/
+web/vendor/*.js
+*.log
+qa/
+coverage/
