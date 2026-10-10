@@ -1,89 +1,63 @@
-# 本次 500 错误修复
+# 免应用登录版上传步骤
 
-日志确认 Vercel 选择了根 server.mjs，却找不到默认函数/服务器导出。新版提供默认处理函数，并兼容原生请求，不需要通过改 Redis 或加入密码来修复这项启动错误。
+## 1. 替换代码
 
-server.mjs、api/site.mjs、vercel.json 是关键修复文件。将完整包覆盖旧仓库内容并提交最方便。不要删除旧 Redis、不要重新配置现有凭据。
+打开已有日历 GitHub 仓库的 Vercel Production 分支（通常 main）。解压本包，将 notion-work-calendar-deploy 里面的内容通过 Add file → Upload files 覆盖到原目录，Commit changes。不是上传 zip 本身。
 
-本次只修启动入口，没有取消应用访问保护。如果没有 APP_PASSWORD 且没有旧哈希/会话配置，/login 页可打开，但登录仍未配置；这与 Invalid export 启动错误不同。不要为绕过登录把工作数据直接公开。
+根目录应看到 package.json、vercel.json、server.mjs、api、lib、web。若项目 Root Directory 以前是子目录，就覆盖该子目录内容。必须覆盖 api/login.mjs、api/logout.mjs、api/session.mjs、lib/auth.mjs、web/login.html 等旧登录相关文件；新版将旧入口退役，无需手工删除它们。
 
-# 重新上传与上线操作（无需终端）
+不要上传实际 .env.local、真实 Token、口令或 node_modules。包内 .env.example 只有空密钥与已知源 ID 示例。
 
-## 1. 替换 GitHub 文件
+## 2. 保留现有变量
 
-1. 下载新版 zip，解压，打开 notion-work-calendar-deploy 文件夹。
-2. 打开已有日历 GitHub 仓库，确认当前分支就是 Vercel 连接的 Production 分支（通常 main）。
-3. Add file → Upload files，将该文件夹内的所有文件与子文件夹上传到仓库根目录，Commit changes。确保 vercel.json 也被覆盖；不是把 zip 上传到仓库。
-4. 根目录看到 package.json、vercel.json、api、lib、web。若原 Vercel Root Directory 指向子文件夹，应更新那一目录内的代码，不另造根目录。
-5. 不上传 .env.local、真实口令/Token、node_modules。系统隐藏的 .gitignore、.github 推荐同时上传，但不要为它们填写任何真实密钥。
-
-## 2. 保留旧 Redis 和数据配置
-
-在日历 Vercel 项目（不是关系图项目）Environment Variables，保持已有：
-
-| Key | 值 |
+| 名称 | 内容 |
 |---|---|
-| NOTION_API_TOKEN | 已授权的集成密钥（保留） |
-| PROJECT_DATA_SOURCE_ID | ae69f1cd462483a5a092870eb8b62258（或实际源） |
-| TASK_DATA_SOURCE_ID | 5f99f1cd4624825cb63a870768a37c55（或实际源） |
-| NOTE_DATA_SOURCE_ID | 3ea9f1cd4624807f8085000b314feab5（或实际源） |
-| NOTE_DATE_PROPERTY | 创建日期（须与实际属性一致） |
+| NOTION_API_TOKEN | 保留你已授权的集成密钥 |
+| PROJECT_DATA_SOURCE_ID | ae69f1cd462483a5a092870eb8b62258，或实际源 |
+| TASK_DATA_SOURCE_ID | 5f99f1cd4624825cb63a870768a37c55，或实际源 |
+| NOTE_DATA_SOURCE_ID | 3ea9f1cd4624807f8085000b314feab5，或实际源 |
+| NOTE_DATE_PROPERTY | 创建日期，或实际属性名 |
 | CALENDAR_CACHE_KEY | notion-calendar:v1:snapshot |
-| KV_REST_API_URL | 旧 Redis Storage 连接自动生成的 HTTPS URL |
-| KV_REST_API_TOKEN | 同一旧数据库的读写 Token |
+| KV_REST_API_URL | 原 Redis 自动注入的 REST URL |
+| KV_REST_API_TOKEN | 同实例读写 Token |
 
-不用解绑旧关系图项目，不要 Flush/清空 Redis、不删图谱键、不重置数据库密码、不改套餐。其余自动注入 KV_URL、REDIS_URL、read-only token 可以保留（程序不使用它们）。若错误配置的 UPSTASH_REDIS_REST_* 仍存在，删除该日历项目的错误值，避免覆盖正确 KV 凭据。
+确保 Production。其它 Storage 自动注入变量可留着。不要重建/清空 Redis，不解绑原图谱应用，不修改图谱键。若日历项目里还有错误的 UPSTASH_REDIS_REST_* 值，删掉错误值，因为会优先覆盖 KV 值。
 
-## 3. 只新增 APP_PASSWORD
+**无需 APP_PASSWORD、APP_PASSWORD_HASH、SESSION_SECRET、COOKIE_SAMESITE。**已有这几个变量不影响新版，删除也是可选，不用因此再做一遍配置。
 
-Add Environment Variable → Key: APP_PASSWORD → Value: 自己设置的至少 14 字符访问口令（推荐 20+ 随机字符）→ Production → Save。不填公开示例，不加引号，不发到聊天，不写进 GitHub。
+## 3. 部署
 
-- 新简化模式不需 APP_PASSWORD_HASH 或 SESSION_SECRET，已设置时也不用重新生成（APP_PASSWORD 优先）。若 APP_PASSWORD 为空，则沿用原哈希+会话密钥模式。
-- CRON_SECRET 不再是默认部署要求；默认没有每日 Cron。
-- COOKIE_SAMESITE 不填默认 Lax。
-- 使用 Vercel 正式域名不需 APP_URL；若已有，确保访问地址与其一致。自定义域名才需显式填写完整 HTTPS Origin。Preview 不要继承 Production APP_URL。
-- 不要启用 ALLOW_MEMORY_CACHE 或将 NODE_ENV 设置为 development 来绕过 Redis。
+Framework Other、Node 22.x、Build npm run build、Output 默认（不要设 web），Root 为上述目录。GitHub commit 后等待自动部署；环境修改后需重新 Redeploy。确认 Deployment 来源为新版 commit，状态 Ready。
 
-## 4. Vercel 构建和重部署
+打开 https://你的正式域名/，直接进入日历；以前收藏的 /login 也会返回首页。不输入任何访问口令，不会创建应用登录 Cookie。Vercel 自身的项目访问保护不会被本包关闭，若仍出现 Vercel 登录是平台保护，不是应用表单。
 
-Framework: Other；Root: 含 package.json 的目录；Build Command: npm run build；Output Directory: 默认，不设 web；Node: 22.x。
+## 4. 数据验收
 
-GitHub commit 通常触发自动部署，但环境变量更新只影响新部署。在 Save APP_PASSWORD 后到 Deployments → 最近部署的菜单 → Redeploy，确保 Production，等待 Ready。部署来源应是上传新版文件的 commit。无需电脑执行 npm 命令。
+若有旧日历缓存直接显示，再检查同步；只有旧关系图缓存时，从 Notion 首次同步建立日历独立缓存。
 
-## 5. 首次验收
+- 同步数据 → 诊断：appVersion 1.2.0，authMode public，cacheMode redis。
+- 检查项目/任务/笔记记录、原页面链接与筛选，刷新仍能读取。
+- /login 不再显示口令框；无 APP_PASSWORD 也可访问日历。
+- 原关系图应用与 Redis 数据保持正常。
 
-正式域名新窗口 → 输入口令 → 同步数据 → 诊断。
+## 5. 故障
 
-- 版本 1.1.1，cacheMode=redis。
-- 项目/任务/笔记真实记录与授权数据库一致，实际数量可能不同于历史截图。
-- 三类各打开一项 → 打开 Notion 页面链接正常。
-- 刷新保留缓存；无痕窗口先登录，匿名 API 不提供数据。
-- 原关系图应用仍可使用，旧图谱 Redis 键未变。
+500 Invalid export：确认 server.mjs 新版默认导出以及 vercel.json 已覆盖，部署的是新版 commit。
 
-如果只有旧图谱缓存，没有日历缓存：这是正常的。日历从 Notion 首次同步后建立自己的缓存，不会自动转换图谱 nodes/edges。
+BOOTSTRAP_REQUIRED：没有有效日历缓存，会尝试自动同步；失败时按提示检查 Notion/Redis。
 
-## 6. 常见问题
+DATA_SOURCE_IDS_REQUIRED / NOTION_TOKEN_REQUIRED：核对必需变量及 Production 范围，修改后重新部署。
 
-- APP_PASSWORD_REQUIRED_MIN_14：Production 的 APP_PASSWORD 不足 14 字符，或超过 256；改后重部署。
-- AUTH_NOT_CONFIGURED：未配置 APP_PASSWORD，原模式的哈希/会话变量也没配齐。
-- ORIGIN_REJECTED：已有 APP_URL 与访问地址不同；纠正 APP_URL。若平台没有提供自动域名变量也可显式配置。
-- PERSISTENT_CACHE_REQUIRED：缺 REST URL/token；重新连接已有 Redis，不能用 REDIS_URL 代替。
-- CACHE_UNAVAILABLE：检查同实例 URL/token、额度和服务状态；不要清空数据库作为修复。
-- DATA_SOURCE_IDS_REQUIRED：缺三项源 ID或环境范围错误；改后重部署。
-- 同步失败：确认三库授权给对应集成、源 ID和字段；已有有效数据保留。
-- Notion 嵌入无法保持登录：先新窗口访问；第三方 Cookie 策略不能由此包保证。
+CACHE_UNAVAILABLE：检查 REST URL/token是否同实例、读写权限与容量/额度；不要清空 Redis。
 
-## 可选每日定时同步（以后需要再配置）
+ORIGIN_REJECTED：已有 APP_URL 和正在访问域名不一致；修正 APP_URL 或使用配置域名。标准 Vercel 系统域名通常自动识别。
 
-默认不启用，减少初始配置。需要离线每日同步时：
-1. 单独设置至少 32 字符随机 CRON_SECRET（不能和访问口令相同），Vercel Production。
-2. 将 vercel.cron.example.json 内的 crons 数组合并进 vercel.json，保留其他配置。
-3. 提交并重新部署，检查 Cron Jobs；0 2 * * * 表示北京时间每天 10:00。
-4. 与关系图错开时间可减少共享 Redis/Notion 瞬时负载。不要改旧关系图的 CRON_SECRET 或任务。
+## 可选定时同步
 
-Cron GET 仍严格要求 Bearer CRON_SECRET；浏览器同步要求已登录 POST + Origin + CSRF。定时执行可能分段，不能保证单次完成大型同步。
+默认没有 Cron。需要每日离线同步时才配置随机至少32字符 CRON_SECRET，再把 vercel.cron.example.json 的 crons 数组加入 vercel.json；0 2 * * * 为北京时间10点。Cron GET 仍需 Bearer 密钥；不能通过 manual=1 绕过。此密钥不是应用登录口令。
 
-## 兼容和回滚
+## 公开访问与回滚
 
-v1.1.1 保持日历缓存 schema=1、字段映射 fingerprint 与 v1.0.0 相同。同源/同键可复用已有日历快照和同步检查点。旧图谱 schema=3 保持隔离，只复用 Redis 服务不读取/改写其业务快照。
+这个版本有意公开日历数据。页面地址保密不是访问控制，Origin/限流不能阻止直接客户端读取公开 API。若以后需要私有，启用确实覆盖 Production 的平台保护，或回滚恢复应用登录；不要只依赖 Notion 原页面私有权限。
 
-回滚部署不会修改 Notion。若回滚至只支持哈希的 1.0.0，要同时恢复 APP_PASSWORD_HASH/SESSION_SECRET；新版 APP_PASSWORD 单变量模式不被旧代码识别。旧部署已签 Cookie 在新派生密钥下无效，需要重新登录。
+缓存 schema/fingerprint 与旧日历保持兼容，不清库。回滚旧应用需同时恢复其原认证配置。此包没有执行任何云端配置或真实数据库操作。

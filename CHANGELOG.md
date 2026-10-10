@@ -1,16 +1,5 @@
-# 1.1.1 — Vercel 服务入口修复
+# 1.2.0 — 移除应用登录
 
-- 根据真实日志 Invalid export found in module /var/task/server.mjs 修复：根入口提供默认 request/response 函数。
-- 保留本地开发 named server，但 Vercel 导入时不主动 listen。
-- 根入口也显式打包 web/**，避免入口自动检测后遗漏登录页/前端资源。
-- 无 request.query helper 的原生请求也能处理 /api/site?path= 重写。
-- 不修改 Redis 数据结构/命名空间或认证策略；未添加 APP_PASSWORD 的认证方式仍待用户确认。
+用户确认取消登录后，主页与日历数据无需 Cookie/应用口令。移除表单、会话到期跳转和退出按钮，/login 重定向首页。旧登录 API 退役，保留空入口文件供 GitHub 覆盖。不再读取 APP_PASSWORD/HASH/SESSION_SECRET/COOKIE_SAMESITE。
 
-# 1.1.0
-
-- 新增单 APP_PASSWORD 模式，服务器 scrypt 派生用途隔离会话签名密钥；可兼容旧哈希+SESSION_SECRET 模式。
-- Vercel 生产域名/部署域名通过平台系统变量识别；自定义 APP_URL 保留严格校验。
-- 原 Redis/KV REST 变量支持保持不变，旧日历 schema/fingerprint 不变，旧图谱键不触碰。
-- 诊断新增 authMode/cacheNamespace，仅返回非敏感元数据。
-- 默认移除 Cron 配置，不需要 CRON_SECRET；保持打开检查和手动同步，附可选 Cron 配置。
-- 重写无需终端的 GitHub/Vercel 上传步骤。未更改日历展示布局和筛选功能。
+同步保留 POST、同源与自定义请求头检查、限流及锁；这些不是私人访问控制。可选 Cron GET 仍需独立密钥。旧 Redis 和日历 schema/fingerprint 不变；关系图缓存隔离不变。保留 1.1.1 默认服务器导出、原生路由和 web 打包修复。

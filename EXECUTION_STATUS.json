@@ -1,28 +1,31 @@
 {
-  "appVersion": "1.1.1",
-  "preparedAt": "2026-10-10T12:01:08.018118+00:00",
+  "appVersion": "1.2.0",
+  "preparedAt": "2026-10-10T12:13:22.019938+00:00",
   "engineeringComplete": true,
   "cloudPublished": false,
-  "liveNotionVerified": false,
   "liveRedisVerified": false,
+  "liveNotionVerified": false,
   "githubChangesPerformed": false,
   "vercelChangesPerformed": false,
   "notionWritesPerformed": false,
+  "authMode": "public",
   "automatedTests": {
-    "passed": 48,
+    "passed": 45,
     "failed": 0,
     "data": "synthetic and mocked Redis REST"
   },
   "browserChecks": {
-    "performed": false,
-    "reason": "Playwright unavailable in current local environment"
+    "viewports": [
+      "1280x900",
+      "390x850"
+    ],
+    "checksPerViewport": 5,
+    "passed": 10,
+    "javascriptErrors": [],
+    "data": "3 synthetic records, not included in package"
   },
-  "dependencyAudit": "npm ci reported 0 vulnerabilities",
-  "cacheNamespace": "notion-calendar:v1:snapshot",
   "cacheSchemaVersion": 1,
-  "graphDataPolicy": "isolated, never read or write graph snapshot keys",
-  "cronEnabledByDefault": false,
-  "fix": "default request handler export for auto-detected root server.mjs",
-  "observedError": "Invalid export found in module /var/task/server.mjs",
-  "cloudFixVerified": false
+  "cacheNamespace": "notion-calendar:v1:snapshot",
+  "graphCacheTouched": false,
+  "cronEnabledByDefault": false
 }

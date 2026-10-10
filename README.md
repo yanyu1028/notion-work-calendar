@@ -1,48 +1,34 @@
-# Notion 工作日历 · 在线版 1.1.1（简化部署）
+# Notion 工作日历 1.2.0 · 无应用登录版
 
-在已连接 Notion 和旧 Redis 的 Vercel 项目中，只需新增一个服务端环境变量 `APP_PASSWORD`。无需在电脑运行 npm、生成哈希或配置会话密钥。访问口令至少 14 字符，推荐 20 字符以上的随机口令；不要使用公开示例或重复使用其他账户密码。
+**公开访问提醒**：按用户确认，移除应用口令、登录页、会话与退出功能。若 Vercel 未开启访问保护，任何能访问网址的人都可读取日历记录和链接，也可从自己的客户端触发限流范围内的同步。Origin/请求头/限流不是私人访问控制。Notion 原页面权限不保护已读取并缓存的日历数据。
 
-## 本次修复
+## 重新上传（无需终端）
 
-修复日志中的 server.mjs 缺少默认导出，补齐根入口 web 文件打包与原生 HTTP 重写处理。Redis 缓存和访问保护策略保持不变。没有配置访问口令时可先验证登录页打开，不能把入口修复与认证配置混为一谈。
+1. 解压，进入 notion-work-calendar-deploy，将里面所有文件/文件夹覆盖到原日历 GitHub 仓库所在目录，提交。
+2. 保留现有 Notion、三个源 ID、Redis REST 凭据、NOTE_DATE_PROPERTY、CALENDAR_CACHE_KEY。不用新增任何应用密码/密钥。
+3. Vercel 等待新 commit 部署 Ready；必要时 Redeploy。
+4. 打开正式首页。旧 /login 地址会跳回首页。首次没有日历缓存时自动尝试同步，也可点击“同步数据”。诊断应显示 version 1.2.0、authMode public、cacheMode redis。
 
-## 上传 GitHub
+## 旧 Redis 兼容
 
-解压后，将 `notion-work-calendar-deploy` 文件夹里的文件/子文件夹上传到原 GitHub 仓库根目录，覆盖同名文件。根目录应看到 `package.json`、`vercel.json`、`api/`、`lib/`、`web/`。不能只上传 zip 或 web 文件夹。不要上传真实 .env 文件、令牌、口令或 node_modules。
+复用原 notion-graph-cache 实例和自动注入的 KV_REST_API_URL / KV_REST_API_TOKEN（读写，不是 READ_ONLY_TOKEN）。旧 UPSTASH_REDIS_REST_URL / TOKEN 仍支持且非空优先：若存在错误旧值应删除。KV_URL/REDIS_URL 不能代替 REST 凭据。
 
-## 保留已有配置
+日历仅写 notion-calendar:v1:snapshot:*，不覆盖/删除/迁移 notion-graph:*。保持已有日历 schema=1/fingerprint 与 1.0.0/1.1.x 一致。同源、同键可复用缓存与同步检查点。旧关系图 schema=3 不是日历数据格式；日历从同一 Notion 数据源同步真实记录，不把 graph nodes/edges 冒充完整日历数据。共享 Redis 容量/请求额度，费用由实际套餐与用量决定。
 
-保留 NOTION_API_TOKEN、三个 *_DATA_SOURCE_ID、NOTE_DATE_PROPERTY、CALENDAR_CACHE_KEY、Vercel Storage 自动注入的 KV_REST_API_URL 和 KV_REST_API_TOKEN。
+## 已移除与保留
 
-新增 `APP_PASSWORD`（Production），Value 填自己设置的强访问口令，不加引号。不需 APP_PASSWORD_HASH / SESSION_SECRET / CRON_SECRET。旧哈希和会话变量仍兼容；设置 APP_PASSWORD 时优先采用简化模式。
+- 移除：应用口令验证、登录表单、8 小时会话、到期跳转、退出按钮。旧 APP_PASSWORD / APP_PASSWORD_HASH / SESSION_SECRET / COOKIE_SAMESITE 变量不再读取，可留着或删除。
+- 保留：server.mjs 默认处理函数修复、web/** 文件打包、页面文件白名单、前端不含服务端密钥、同步 POST/同源检查/显式请求头、Redis 限流/锁/原子发布、失败保留缓存、断点恢复。
+- /api/login 与 /api/logout 返回 410（旧文件被新版本替换，避免仅上传无法删除旧文件的问题）；/api/session 返回 requiresLogin=false，前端不调用它。
+- 公共数据/诊断不包含 Token、原始 Notion API records 或正文。标准日期/标题/状态/关系及其他日历字段属于可访问的数据。
+- 不修改 Notion、不扫描正文、不递归普通页面。原页面链接仍受 Notion 自己的权限控制。
 
-Vercel 默认域名自动识别；自定义域名使用 APP_URL=https://实际域名，末尾不加路径。Production 支持 Vercel 提供的生产域名和本次部署域名，Preview 不自动信任 Production 域名。已有 APP_URL 会严格限制到该域名；如填错，修改或删除后重新部署。
+## 环境与构建
 
-## Redis 和数据兼容范围（重要）
+Framework Other；Root 含 package.json；Build npm run build；Output 默认，不设 web；Node 22.x。Vercel 自动安装依赖和生成 Chart.js，电脑无需 npm。
 
-- 复用原 `notion-graph-cache` 数据库实例与 REST 读写凭据，不用新建、不用付费升级来安装本包。
-- 日历仅写 `notion-calendar:v1:snapshot:*`；原图谱 `notion-graph:*` 保持原样，不迁移、不删除、不覆盖。不允许将 CALENDAR_CACHE_KEY 设置成图谱键。
-- 1.0.0 日历缓存 schema=1 与 source fingerprint 保持不变：同数据源、同笔记日期属性、同缓存键可继续读取。
-- 原关系图 7.8.3 的 graph schema=3 不是日历 schema=1，本包不会冒充能直接读取 graph nodes/edges 为完整日历。日历首次从授权 Notion 数据库同步真实记录，单独保存。
-- 两个应用不会自动同步彼此的缓存；共享 Redis 的容量和请求额度。是否收费由现有数据库套餐/使用量决定，本包不调整套餐。
-- KV_URL / REDIS_URL / read-only token 不能代替 REST 读写变量。代码兼容旧 UPSTASH_REDIS_REST_URL / TOKEN；非空旧值优先，因此错误旧值应删除。不要混用不同实例的 URL/token。
+标准 Vercel 域名自动识别用于同步 Origin 校验。已有 APP_URL 会严格限定该地址，需与实际访问一致；自定义域名显式填 HTTPS Origin，无末尾路径。若打开的是非配置域名，同步可能 ORIGIN_REJECTED，页面数据读取不依赖此项。
 
-## Vercel
+默认打开页面检查/手动同步，无离线每日 Cron。可选 Cron 仍需独立 CRON_SECRET 与 vercel.cron.example.json；不要把 Notion/Redis Token 当 Cron 密钥。
 
-Framework: Other；Build: npm run build；Root: 仓库根目录（或实际含 package.json 的目录）；Output Directory: 保留 Other 默认，不改成 web；Node: 22.x。依赖由 Vercel 自动安装。本地无需执行命令。
-
-部署 Ready 后，用正式域名打开，登录 → 同步数据 → 诊断（cacheMode 应为 redis）。首次同步可能分段完成，失败保留旧缓存。授权不足要在 Notion 的数据库 Connections 添加对应集成。
-
-## 同步方式
-
-本包默认打开页面后检查同步、提供手动同步；长时间不打开不会保证数据自动更新。为了免填额外变量，默认 vercel.json 不再启用每日 Cron。可选配置见 DEPLOYMENT.md；启用 Cron 仍须独立 CRON_SECRET，不以访问口令充当 Cron 密钥。
-
-## 安全
-
-服务端环境变量保存 APP_PASSWORD；服务器用用途隔离、按日历命名空间限定的 scrypt 派生签名密钥，不把口令存入 Redis或发送给浏览器。口令变更并重新部署后旧会话失效；使用强口令尤其重要（Cookie 签名安全依赖口令强度）。兼容原哈希/独立会话密钥模式。HttpOnly Cookie、8 小时会话、CSRF、Origin、Redis 频率限制和页面/数据访问保护保留。不是多用户登录/MFA/SSO。
-
-不读取正文、不递归扫描普通页面、不修改 Notion。不内嵌历史/演示工作数据、不提供公开数据端点。Notion iframe 受第三方 Cookie 限制，登录失败时在新窗口打开。
-
-## 验证
-
-见 VALIDATION.md。本包已做本地合成测试；未连接你的真实 Redis、Notion、GitHub 或 Vercel。交付压缩包不代表已经上线。
+详见 DEPLOYMENT.md / VALIDATION.md。交付包不是云端上线确认。

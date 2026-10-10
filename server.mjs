@@ -5,4 +5,4 @@ const handlers={'/api/calendar':calendar,'/api/sync':sync,'/api/session':session
 export default function handler(req,res){const url=new URL(req.url||'/','http://local');const path=url.pathname.replace(/\/$/,'')||'/';return (handlers[path]||site)(req,res);}
 export const server=http.createServer(handler);
 // The platform invokes the default export; do not start a second listener on import.
-if(!process.env.VERCEL&&process.argv[1]&&fileURLToPath(import.meta.url)===resolve(process.argv[1]))server.listen(Number(process.env.PORT||3000),process.env.HOST||'127.0.0.1',()=>console.log('Calendar server ready; private data endpoints require login.'));
+if(!process.env.VERCEL&&process.argv[1]&&fileURLToPath(import.meta.url)===resolve(process.argv[1]))server.listen(Number(process.env.PORT||3000),process.env.HOST||'127.0.0.1',()=>console.log('Calendar server ready; no application login (public data endpoints).'));

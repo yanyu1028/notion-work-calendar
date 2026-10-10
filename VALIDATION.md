@@ -1,20 +1,10 @@
-# v1.1.1 验证记录
+# v1.2.0 验证记录
 
-## 本次实际完成
+- 45 项本地 Node 合成测试通过，0 失败；覆盖匿名首页/日历数据/诊断、旧登录地址返回首页、登录/退出 API 退役、无 Cookie/应用密钥同步、Origin/自定义头检查、GET Cron 无凭据拒绝、文件访问白名单、Vercel 默认入口/web 打包及原有同步算法。
+- 本地 Playwright/Chromium 桌面1280×900、移动390×850均通过5项检查：直接进入或旧登录地址跳转、日历初始化、不出现口令框与退出、刷新、公开诊断；0 页面 JavaScript 错误。使用3条合成记录，数据与测试脚本均不放进部署包。
+- Redis REST 使用模拟服务验证旧 KV URL/token 兼容、日历 schema=1 可继续读取、图谱键不变。并非用户真实 Redis 线上测试。
+- npm test 与 npm run build 成功，前端与 API 语法检查通过。
+- 不含真实密钥/.env.local/历史快照/node_modules/vendor生成文件。
+- 未修改用户 GitHub/Vercel/Redis/Notion，未执行真实同步。云端部署、实际 Redis Lua/配额、数据库授权和 Notion iframe 仍需线上验收。
 
-- 48 项 Node 合成测试通过，0 失败。包含旧模式 HTTP 回归、单 APP_PASSWORD HTTP 登录/会话/诊断、新模式签名/口令轮换、弱口令拒绝、Origin/CSRF、自动识别 Vercel 生产域名/Preview 隔离。
-- 旧 Redis 兼容测试使用模拟 REST 服务：KV_REST_API_URL/TOKEN 正确认证；日历读写键限定在 notion-calendar 命名空间；原 graph schema=3 数据保持原样；已有日历 schema=1/fingerprint 可读取。
-- 原有日期/分页/增量/断点/锁/原子提交/失败保留缓存测试保留。
-- npm ci 与 npm run build 成功；安装审计报告 0 漏洞。
-- API、前端和脚本语法检查通过。
-- 归档不包含真实环境文件、node_modules、历史数据快照或生成的 vendor 脚本（Vercel 构建时生成）。
-
-## 未完成的线上验收
-
-没有操作用户的 GitHub/Vercel/Redis/Notion。本次未连接真实旧 Redis，未测试 Redis 服务端 Lua、实际源授权或 Vercel 域名系统变量；不可把模拟测试称为真实服务兼容验证。本地浏览器流程测试因当前环境缺少 Playwright 依赖未能执行，未将旧版本浏览器测试冒充本次结果。
-
-部署后需要用户验证：正式域名登录、首次同步、诊断 cacheMode=redis/version=1.1.0、三类原页面链接、刷新、无痕访问保护，以及原关系图仍正常。第三方 Cookie/Notion iframe 仍需实际浏览器验收。
-
-## 入口修复回归
-
-新增 3 项测试：默认导出可调用、原生请求不带 request.query 时 catch-all 根页/登录页与访问保护正常、root server 与 api/site 的 web 文件打包配置正确。npm run build 通过。尚未在用户 Vercel 上验证该修复；不能将本地入口测试称为云端部署成功。
+访问模式有意公开：没有应用认证，不可以将同源/限流测试描述为私人数据保护。Token不返回浏览器，Notion写操作不存在，但日历业务数据可由匿名请求读取（除非另有平台保护）。
