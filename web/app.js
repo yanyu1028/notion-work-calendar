@@ -712,8 +712,8 @@ const statSpecs={project_start:{kind:'project',date:'start_date',label:'开始�
 const statSpec=()=>statSpecs[$('stats-source').value]||statSpecs.task_due;
 const statDate=r=>r[statSpec().date];
 const statRows=()=>{const [lo,hi]=period(),spec=statSpec();return data.filter(r=>r.kind===spec.kind&&matches(r)&&r[spec.date]&&r[spec.date]>=lo&&r[spec.date]<=hi);};
-const fieldOptions={project:[['start','开始日期'],['due','截止日期'],['category','项目类别'],['priority','优先级']],task:[['start','开始日期'],['due','截止日期'],['category','任务类别'],['priority','优先级'],['projects','所属项目']],note:[['start','创建日期'],['category','笔记类型'],['projects','关联项目'],['related','关联任务']]};
-const fieldValue=(r,key)=>key==='start'?r.start_date:key==='due'?r.due_date:key==='projects'?names(r.effective_projects).join('、'):key==='related'?names(r.related.filter(u=>byUrl.get(u)?.kind==='task')).join('、'):r[key];
+const fieldOptions={project:[['start','开始日期'],['due','截止日期'],['category','项目类别'],['priority','优先级'],['owners','负责人'],['completion','完成度（源汇总）'],['task_status','任务状态（源公式）']],task:[['start','开始日期'],['due','截止日期'],['category','任务类别'],['priority','优先级'],['projects','所属项目'],['people','人员安排'],['owners','负责人'],['quadrant','四象限（源公式）']],note:[['start','创建日期'],['category','笔记类型'],['projects','关联项目'],['related','关联任务']]};
+const fieldValue=(r,key)=>key==='people'?r.people.join('、'):key==='owners'?ownerNames(r):key==='completion'?completionText(r):key==='start'?r.start_date:key==='due'?r.due_date:key==='projects'?names(r.effective_projects).join('、'):key==='related'?names(r.related.filter(u=>byUrl.get(u)?.kind==='task')).join('、'):r[key];
 const recordFields=r=>(state.fields[r.kind]||[]).map(key=>{const v=fieldValue(r,key),name=fieldOptions[r.kind].find(([k])=>k===key)?.[1];return v?`${esc(name)}：${esc(v)}`:'';}).filter(Boolean).join(' · ');
 const syncNodeFilters=()=>{
  const noStatus=state.nodeFilter==='note';
@@ -786,8 +786,13 @@ const rebuildRelations=()=>{byUrl.clear();adj.clear();data.forEach(r=>{byUrl.set
 const connect=(a,b)=>{if(a!==b&&adj.has(a)&&adj.has(b)){adj.get(a).add(b);adj.get(b).add(a);}};
 rebuildRelations();
 const names=urls=>urls.map(u=>byUrl.get(u)?.title||'未载入的关联记录');
-const text=v=>v===null||v===undefined||v===''?'未设置':v;
+const text=v=>v===null||v===undefined||v===''?'未填写':v;
 const field=(k,v,long=false)=>`<div class="field"><div class="field-key">${esc(k)}</div><div class="field-value ${long?'long':''}">${esc(text(v))}</div></div>`;
+const ownerNames=r=>(r.owners||[]).map(x=>x.name||'姓名未提供').join('、');
+const completionText=r=>typeof r.completion==='number'&&Number.isFinite(r.completion)?InlineChartRuntime.formatValue(r.completion*100,'percent'):null;
+const sourceValue=(r,key,value)=>{const state=r.field_states?.[key];if(state==='unsupported')return '暂不支持此字段类型';if(state==='invalid')return value===null||value===undefined?'源值格式异常':String(value)+'（源值异常）';if(state==='partial')return value?String(value)+'（信息不完整）':'信息不完整，请查看诊断';if(value!==null&&value!==undefined&&value!==''&&(!Array.isArray(value)||value.length))return value;if(!r.mapping_version||r.mapping_version<2)return '未同步（待字段升级）';return state==='missing'?'不适用（源无此字段）':'未填写';};
+const sourceField=(r,key,label,value,long=false)=>field(label,sourceValue(r,key,value),long);
+const attachmentsHtml=r=>{if(!r.mapping_version||r.mapping_version<2)return sourceField(r,'attachments','附件',null);const files=r.attachments||[];if(!files.length)return sourceField(r,'attachments','附件',null);return `<div class="field"><div class="field-key">附件</div><div class="field-value">${files.map(f=>{let url=null;try{const u=new URL(f.url);if(u.protocol==='https:')url=u.href;}catch{}const expired=f.expiry_time&&Date.parse(f.expiry_time)<=Date.now();return url&&!expired?`<a class="attachment-link" href="${esc(url)}" target="_blank" rel="noopener noreferrer">${esc(f.name||'附件')} ↗</a>`:`<span class="attachment-link">${esc(f.name||'附件')} · 链接${expired?'已过期':'不可用'}，请打开 Notion${expired?'或完整对账':''}</span>`;}).join('')}</div></div>`;};
 const period=()=>{
  const y=state.anchor.getUTCFullYear(),m=state.anchor.getUTCMonth();
  if(state.mode==='week'){const lo=add(state.anchor,-((state.anchor.getUTCDay()+6)%7));return [iso(lo),iso(add(lo,6))];}
@@ -810,11 +815,14 @@ function parseSearch(v){const out=[],re=/"([^"]*)"|“([^”]*)”|([^\s,，;；
 function editWithin(a,b,max){if(Math.abs(a.length-b.length)>max)return false;let prev=Array.from({length:b.length+1},(_,i)=>i);for(let i=1;i<=a.length;i++){const cur=[i];let low=i;for(let j=1;j<=b.length;j++){cur[j]=Math.min(cur[j-1]+1,prev[j]+1,prev[j-1]+(a[i-1]===b[j-1]?0:1));low=Math.min(low,cur[j])}if(low>max)return false;prev=cur}return prev[b.length]<=max}
 function fieldMatch(field,q,mode){if(field.includes(q.text))return 'exact';if(q.literal||mode==='exact')return null;const txt=q.text;if(mode==='loose'){if(txt.length<2)return null;for(let start=0;start<field.length;start++){if(field[start]!==txt[0])continue;let k=1,lastPos=start;for(let j=start+1;j<Math.min(field.length,start+txt.length*2+3)&&k<txt.length;j++)if(field[j]===txt[k]){k++;lastPos=j}if(k===txt.length&&lastPos-start<txt.length*2+2)return 'loose'}return null}if(mode!=='typo'||txt.length<3)return null;const max=txt.length<=7?1:Math.min(2,Math.floor(txt.length*.2)),limit=Math.min(field.length,600);for(let i=0;i<limit;i++)for(let len=Math.max(1,txt.length-max);len<=txt.length+max&&i+len<=limit;len++)if(editWithin(field.slice(i,i+len),txt,max))return 'near';return null}
 const buildSearchFields=()=>new Map(data.map(r=>[r.url,[
- ['title','名称',r.title],['description','描述',r.description],['remark','备注',r.remark],['summary','摘要',r.summary],
- ['people','人员安排',r.people.join('、')],['category','类别',r.category],['requester','需求人',r.requester],
+ ['title','名称',r.title],['description','描述',r.description],['remark','备注',r.remark],['summary','摘要',r.summary],['note_content','笔记内容',r.note_content],
+ ['people','人员安排',r.kind==='task'?r.people.join('、'):null],['owners','负责人',ownerNames(r)],['category','类别',r.category],['requester','需求人',r.requester],
  ['status','状态',r.status],['priority','优先级',r.priority],['date','日期',[r.start_date,r.due_date].filter(Boolean).join(' ')],
- ['projects','关联项目',names(r.effective_projects).join('、')]
-].filter(x=>x[2]).map(([key,name,raw])=>({key,name,raw,text:normalizeSearch(raw)}))]));
+ ['projects','关联项目',names(r.effective_projects).join('、')],['related','三库关联记录',names(r.related).join('、')],
+ ['quadrant','四象限（源公式）',r.quadrant],['task_status','任务状态（源公式）',r.task_status],['remaining_source','剩余天数（源公式）',r.remaining_source],
+ ['completion','完成度（源汇总）',completionText(r)],['created_time','创建时间',r.created_time],['last_edited_time','最近编辑时间',r.last_edited_time],
+ ['attachments','附件名称',(r.attachments||[]).map(f=>f.name).join('、')]
+].filter(x=>x[2]!==null&&x[2]!==undefined&&x[2]!=='').map(([key,name,raw])=>({key,name,raw,text:normalizeSearch(raw)}))]));
 let searchFields=buildSearchFields();
 const searchDefaults={mode:'exact',condition:'all',scope:'title'};
 let searchMeta=new Map(),searchQueries=[];
@@ -823,7 +831,7 @@ const refreshSearch=()=>{
  const mode=$('search-mode').value,condition=$('search-condition').value,scope=$('search-scope').value;
  if(!searchQueries.length)return;
  for(const r of data){
-  const fields=searchFields.get(r.url).filter(f=>scope==='all'||scope==='content'&&['title','description','remark','summary'].includes(f.key)||scope==='title'&&f.key==='title');
+  const fields=searchFields.get(r.url).filter(f=>scope==='all'||scope==='content'&&['title','description','remark','summary','note_content'].includes(f.key)||scope==='title'&&f.key==='title');
   const hits=[];for(const query of searchQueries){let best=null;for(const f of fields){const kind=fieldMatch(f.text,query,mode);if(!kind)continue;const score=(kind==='exact'?100:kind==='loose'?45:20)+(f.key==='title'?30:0);if(!best||score>best.score)best={...f,kind,score,query:query.text};}if(best)hits.push(best);}
   if(!hits.length||condition==='all'&&hits.length!==searchQueries.length)continue;
   const kind=hits.some(h=>h.kind==='near')?'near':hits.some(h=>h.kind==='loose')?'loose':'exact';
@@ -887,20 +895,21 @@ const renderSidebar=()=>{
  }else{
   const r=byUrl.get(side.url);
   if(!r){$('side-content').innerHTML='<div class="side-empty">记录未载入。</div>';return;}
-  const rs=[...adj.get(r.url)].map(u=>byUrl.get(u)),badges=[r.category];
-  if(r.kind!=='note'){badges.push(r.status||'未设置状态','优先级：'+(r.priority||'未设置'));}
+  const rs=[...adj.get(r.url)].map(u=>byUrl.get(u)),badges=[sourceValue(r,'category',r.category==='未设置'?null:r.category)];
+  if(r.kind!=='note'){badges.push(sourceValue(r,'status',r.status==='未设置'?null:r.status),'优先级：'+sourceValue(r,'priority',r.priority));}
   html=`<div class="eyebrow">${label[r.kind]}数据库</div><h2>${esc(r.title)}</h2><div class="badges">${badges.filter(Boolean).map(t=>`<span class="badge">${esc(t)}</span>`).join('')}</div><h3>记录信息</h3>`;
   if(r.kind==='task'){
-   html+=field('人员安排',r.people.join('、'))+field('需求人',r.requester)+field('任务描述',r.description,true)+field('备注',r.remark,true)+field('开始日期',r.start_date)+field('截止日期',r.due_date)+field('剩余天数',remaining(r))+(r.invalid_range?field('日期提醒','开始日期晚于截止日期；按原始截止节点展示'):'');
+   html+=sourceField(r,'people','人员安排',r.people.join('、'))+sourceField(r,'owners','负责人',ownerNames(r))+sourceField(r,'requester','需求人',r.requester)+sourceField(r,'description','任务描述',r.description,true)+sourceField(r,'remark','备注',r.remark,true)+sourceField(r,'start_date','开始日期',r.start_date)+sourceField(r,'due_date','截止日期',r.due_date)+sourceField(r,'quadrant','四象限（源公式）',r.quadrant)+sourceField(r,'remaining_source','剩余天数（源公式）',r.remaining_source)+field('日历剩余天数',remaining(r))+sourceField(r,'created_time','创建时间',r.created_time)+attachmentsHtml(r)+(r.invalid_range?field('日期提醒','开始日期晚于截止日期；按原始截止节点展示'):'');
   }else if(r.kind==='project'){
    const tasks=rs.filter(x=>x.kind==='task'),done=tasks.filter(x=>x.status==='已归档').length;
-   html+=field('项目描述',r.description,true)+field('开始日期',r.start_date)+field('截止日期',r.due_date)+field('备注',r.remark,true);
+   html+=sourceField(r,'owners','负责人',ownerNames(r))+sourceField(r,'description','项目描述',r.description,true)+sourceField(r,'start_date','开始日期',r.start_date)+sourceField(r,'due_date','截止日期',r.due_date)+sourceField(r,'remark','备注',r.remark,true)+sourceField(r,'completion','完成度（源汇总）',completionText(r))+sourceField(r,'task_status','任务状态（源公式）',r.task_status)+sourceField(r,'created_time','创建时间',r.created_time)+attachmentsHtml(r);
    if(tasks.length){const percent=done/tasks.length*100;html+=`<div class="field"><div class="field-key">关联任务归档率</div><div class="field-value">${InlineChartRuntime.formatValue(percent,'percent')}（${fmt(done)} / ${fmt(tasks.length)}）<div class="progress"><i style="width:${percent}%"></i></div></div></div>`;}else html+=field('任务进展','暂无关联任务');
   }else{
-   html+=field('笔记类型',r.category)+field('创建日期',r.start_date)+field('笔记摘要',r.summary,true);
+   html+=sourceField(r,'category','笔记类型',r.category)+sourceField(r,'start_date','创建日期',r.start_date)+sourceField(r,'note_content','笔记内容',r.note_content,true);if(r.summary||r.field_states?.summary==='unsupported')html+=sourceField(r,'summary','笔记摘要',r.summary,true);
    if(r.inherited_projects.length)html+=`<h3>由任务推导的关联项目</h3>${r.inherited_projects.map(u=>byUrl.get(u)).filter(Boolean).map(r=>relButton(r,'间接关联')).join('')}`;
   }
-  html+=`<a class="external-link" href="${esc(r.url)}" target="_blank" rel="noopener noreferrer">打开 Notion 页面 ↗</a><h3>直接关联 · ${fmt(rs.length)}</h3>${rs.length?grouped(rs):'<div class="side-note">暂无已载入的直接关联。</div>'}`;
+  if(r.kind!=='note')html+='<div class="side-note">源公式与源汇总为同步时读取值；日历剩余天数按当前北京时间计算。</div>';
+  html+=`<a class="external-link" href="${esc(r.url)}" target="_blank" rel="noopener noreferrer">打开 Notion 页面 ↗</a><h3>三库内直接关联 · ${fmt(rs.length)}</h3>${rs.length?grouped(rs):'<div class="side-note">暂无已载入的直接关联。</div>'}`;
  }
  $('side-content').innerHTML=html;
  $('side-content').scrollTop=sidebarScroll;
@@ -1020,8 +1029,8 @@ const renderCalendar=()=>{
 };
 const dimensions={
  note:[['category','笔记类型'],['projects','关联项目'],['related','关联任务'],['time','时间分布']],
- task:[['category','任务类别'],['status','当前状态'],['priority','优先级'],['projects','关联项目'],['time','时间分布']],
- project:[['category','项目类别'],['status','当前状态'],['priority','优先级'],['time','时间分布']]
+ task:[['category','任务类别'],['status','当前状态'],['priority','优先级'],['projects','关联项目'],['people','人员安排'],['owners','负责人'],['quadrant','四象限（源公式）'],['time','时间分布']],
+ project:[['category','项目类别'],['status','当前状态'],['priority','优先级'],['owners','负责人'],['task_status','任务状态（源公式）'],['time','时间分布']]
 };
 const refreshDimensions=()=>{
  const source=statSpec().kind,old=$('stats-dimension').value,options=dimensions[source];
@@ -1030,15 +1039,17 @@ const refreshDimensions=()=>{
  refreshChartOptions();
 };
 const refreshChartOptions=()=>{
- const time=$('stats-dimension').value==='time',multiple=['projects','related'].includes($('stats-dimension').value),old=$('stats-shape').value;
+ const time=$('stats-dimension').value==='time',multiple=['projects','related','people','owners'].includes($('stats-dimension').value),old=$('stats-shape').value;
  const choices=time?[['line','折线图'],['vertical','纵向柱形图']]:multiple?[['horizontal','横向柱形图'],['vertical','纵向柱形图']]:[['horizontal','横向柱形图'],['vertical','纵向柱形图'],['ring','环形图']];
  $('stats-shape').innerHTML=choices.map(([v,t])=>`<option value="${v}">${t}</option>`).join('');
  $('stats-shape').value=choices.some(([v])=>v===old)?old:time?'line':statSpec().kind==='note'&&$('stats-dimension').value==='category'?'ring':'horizontal';
 };
 const dimensionKeys=(r,dim)=>{
+ if(dim==='people')return r.people.length?[...new Set(r.people)]:[sourceValue(r,'people',null)];
+ if(dim==='owners')return r.owners?.length?[...new Set(r.owners.map(x=>x.name||'姓名未提供'))]:[sourceValue(r,'owners',null)];
  if(dim==='projects')return r.effective_projects.length?[...new Set(names(r.effective_projects))]:['未关联项目'];
  if(dim==='related'){const urls=r.related.filter(u=>byUrl.get(u)?.kind==='task');return urls.length?[...new Set(names(urls))]:['未关联任务'];}
- return [r[dim]||'未设置'];
+ return [r[dim]||(['quadrant','task_status'].includes(dim)?sourceValue(r,dim,null):'未填写')];
 };
 const dimensionKey=(r,dim)=>dimensionKeys(r,dim)[0];
 const colorTokens=['--blue','--yellow','--green','--purple','--orange','--pink','--teal','--red'];
@@ -1072,7 +1083,7 @@ const renderStats=()=>{
  $('stats-title').textContent=periodName()+sourceName+' · '+dimName;
  $('stats-aside').textContent=fmt(rows.length)+' 项'+sourceName;
  const dateBasis=source==='note'?'笔记创建日期':(source==='project'?'项目':'任务')+(statSpec().date==='due_date'?'截止日期':'开始日期');
- $('stats-context').textContent='周期与筛选同步，日期口径由统计对象决定。当前按'+dateBasis+'统计，不代表完成量。';
+ $('stats-context').textContent='周期与筛选同步，日期口径由统计对象决定。当前按'+dateBasis+'统计，不代表完成量。'+(['people','owners'].includes(dim)?'多人员按每位分别计入，合计可能大于记录数。':'');
  const wrap=$('distribution').parentElement;
  $('chart-legend').innerHTML='';
  if (typeof Chart === "undefined") {wrap.hidden=true;$('chart-empty').hidden=false;$('chart-empty').textContent='Chart could not be rendered. 日历与侧栏仍可使用。';return;}
@@ -1217,7 +1228,7 @@ const html=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'
 function signalError(value){const dot=document.querySelector('.diagnostic-dot');dot.hidden=!value;document.getElementById('sync-menu-toggle').setAttribute('aria-label',value?'同步选项与诊断：有新的异常':'同步选项与诊断');}
 function recordResult(value){lastClient={...value,at:new Date().toISOString()};if(value.status==='error')signalError(true);if(dialog.open)refreshDiagnostics();}
 async function request(path,options={}){let response;try{response=await fetch(path,{credentials:'omit',cache:'no-store',signal:AbortSignal.timeout(path.startsWith('/api/sync')?65000:15000),...options,headers:{...(options.method==='POST'?{'x-calendar-request':'1'}:{}),...options.headers}});}catch{throw Error('REQUEST_FAILED');}let body;try{body=await response.json();}catch{throw Error('INVALID_RESPONSE');}if(!response.ok)throw Error(body.error||'SERVICE_UNAVAILABLE');return body;}
-function validPayload(value){return value&&Array.isArray(value.records)&&value.meta&&/^\d{4}-\d{2}-\d{2}$/.test(value.meta.snapshot_date)&&value.records.every(r=>['project','task','note'].includes(r.kind)&&/^https:\/\/www\.notion\.so\/[a-f0-9]{32}$/.test(r.url)&&[r.projects,r.related,r.effective_projects,r.inherited_projects,r.people].every(Array.isArray)&&[r.start_date,r.due_date].every(d=>d===null||/^\d{4}-\d{2}-\d{2}$/.test(d)));}
+function validPayload(value){return value&&Array.isArray(value.records)&&value.meta&&/^\d{4}-\d{2}-\d{2}$/.test(value.meta.snapshot_date)&&value.records.every(r=>(!r.mapping_version||r.mapping_version<2||Array.isArray(r.owners)&&r.owners.every(x=>x&&(x.name===null||typeof x.name==='string'))&&Array.isArray(r.attachments)&&r.attachments.every(x=>x&&typeof x.name==='string'&&(x.url===null||typeof x.url==='string'))&&r.field_states&&typeof r.field_states==='object'&&[r.note_content,r.quadrant,r.task_status,r.remaining_source].every(x=>x===null||typeof x==='string')&&(r.completion===null||typeof r.completion==='number'&&Number.isFinite(r.completion)))&&['project','task','note'].includes(r.kind)&&/^https:\/\/www\.notion\.so\/[a-f0-9]{32}$/.test(r.url)&&[r.projects,r.related,r.effective_projects,r.inherited_projects,r.people].every(Array.isArray)&&r.people.every(x=>typeof x==='string')&&[r.start_date,r.due_date].every(d=>d===null||/^\d{4}-\d{2}-\d{2}$/.test(d)));}
 
 async function loadData(){const payload=await request('/api/calendar');if(!validPayload(payload))throw Error('INVALID_DATA');let update;if(!dashboard)dashboard=initializeDashboard(payload);else update=dashboard.applyPayload(payload);displayedMeta=payload.meta;document.getElementById('dashboard').hidden=false;document.getElementById('loading-placeholder').hidden=true;window.CalendarUI.fitSide();return update;}
 function busy(value){active=value;syncButton.disabled=value;syncButton.setAttribute('aria-busy',String(value));document.getElementById('online-full').disabled=value;}
@@ -1232,7 +1243,7 @@ const when=value=>value?new Date(value).toLocaleString('zh-CN',{timeZone:'Asia/S
 const statusNames={complete:'同步完成',skipped:'检查完成，无需更新',running:'正在同步',paused:'进度已保存，等待继续',busy:'另一个请求正在同步',error:'同步未完成'};
 const countsText=counts=>counts?['project','task','note'].map((k,i)=>['项目','任务','笔记'][i]+' '+(counts[k]??0)).join(' · '):'暂无有效数据';
 function row(key,value){return `<dt>${html(key)}</dt><dd>${html(value)}</dd>`;}
-function renderDiagnostics(body,error){const local=lastClient,last=body?.lastCompletedSync,snapshotCounts=body?.counts||displayedMeta?.counts;let output='<h3>本页最近检查 / 操作</h3><dl class="diagnostic-summary">';output+=row('结果',local?statusNames[local.status]||local.status:'尚未检查');if(local){output+=row('时间',when(local.at));if(local.durationMs!==undefined)output+=row('耗时',(local.durationMs/1000).toFixed(1)+' 秒');if(local.error)output+=row('原因',messages[local.error]||local.error);if(local.status==='error')output+=row('已有显示',local.retainedData?'保留，不清空':'当前尚无有效日历数据');if(local.selectionRemoved)output+=row('所选记录','已不在当前数据源中，详情已关闭');}output+='</dl><h3>服务器最近完成的同步</h3><dl class="diagnostic-summary">'+row('完成时间',when(last?.finishedAt));if(last)output+=row('差异记录',`新增 ${last.added??0} · 更新 ${last.updated??0} · 移除 ${last.deleted??0}`);if(body?.sync&&body.sync.status!=='complete'){output+=row('当前任务',statusNames[body.sync.status]||body.sync.status);if(body.sync.error)output+=row('任务异常',messages[body.sync.error]||body.sync.error);}output+='</dl><h3>当前有效数据</h3><dl class="diagnostic-summary">'+row('数据时间',when(body?.generatedAt||displayedMeta?.generatedAt))+row('记录数量',countsText(snapshotCounts))+row('缓存方式',body?.cacheMode||'暂未读取')+row('应用版本',body?.appVersion||'1.3.0')+'</dl>';if(error)output+='<p class="diagnostic-note">诊断读取失败：'+html(messages[error]||error)+'。以上本页结果仍可查看。</p>';output+='<details><summary>数据检查与技术详情</summary><pre>'+html(JSON.stringify(body||{error:error||'DIAGNOSTICS_UNAVAILABLE'},null,2))+'</pre></details><p class="diagnostic-note">完整对账只校验三库记录，不扫描正文、不修改 Notion。检查跳过与数据同步完成分别记录。</p>';target.innerHTML=output;}
+function renderDiagnostics(body,error){const local=lastClient,last=body?.lastCompletedSync,snapshotCounts=body?.counts||displayedMeta?.counts;let output='<h3>本页最近检查 / 操作</h3><dl class="diagnostic-summary">';output+=row('结果',local?statusNames[local.status]||local.status:'尚未检查');if(local){output+=row('时间',when(local.at));if(local.durationMs!==undefined)output+=row('耗时',(local.durationMs/1000).toFixed(1)+' 秒');if(local.error)output+=row('原因',messages[local.error]||local.error);if(local.status==='error')output+=row('已有显示',local.retainedData?'保留，不清空':'当前尚无有效日历数据');if(local.selectionRemoved)output+=row('所选记录','已不在当前数据源中，详情已关闭');}output+='</dl><h3>服务器最近完成的同步</h3><dl class="diagnostic-summary">'+row('完成时间',when(last?.finishedAt));if(last)output+=row('差异记录',`新增 ${last.added??0} · 更新 ${last.updated??0} · 移除 ${last.deleted??0}`);if(body?.sync&&body.sync.status!=='complete'){output+=row('当前任务',statusNames[body.sync.status]||body.sync.status);if(body.sync.error)output+=row('任务异常',messages[body.sync.error]||body.sync.error);}output+='</dl><h3>当前有效数据</h3><dl class="diagnostic-summary">'+row('数据时间',when(body?.generatedAt||displayedMeta?.generatedAt))+row('记录数量',countsText(snapshotCounts))+row('缓存方式',body?.cacheMode||'暂未读取')+row('应用版本',body?.appVersion||'1.4.0')+row('字段映射版本',body?.cachedMappingVersion?`${body.cachedMappingVersion} / 目标 ${body.mappingVersion}`:'尚未读取')+row('字段升级',body?.mappingUpgradeRequired?'需要完整重读；旧数据暂时保留':'当前无需升级')+row('字段异常',body?.fieldDiagnostics?`${body.fieldDiagnostics.issueCount} 项（详见技术详情）`:'尚无新映射检查结果')+'</dl>';if(error)output+='<p class="diagnostic-note">诊断读取失败：'+html(messages[error]||error)+'。以上本页结果仍可查看。</p>';if(body?.fieldDiagnostics?.counts){output+='<h3>字段校验</h3><dl class="diagnostic-summary">';for(const [kind,key,label] of [['task','people','任务人员安排'],['task','owners','任务负责人'],['project','owners','项目负责人'],['project','completion','项目完成度'],['note','note_content','笔记内容']]){const f=body.fieldDiagnostics.counts[kind]?.[key];if(f)output+=row(label,`已读取 ${f.ok||0} · 未填写 ${f.empty||0} · 源无字段 ${f.missing||0} · 异常 ${(f.unsupported||0)+(f.invalid||0)+(f.partial||0)}`);}output+='</dl>';}output+='<details><summary>数据检查与技术详情</summary><pre>'+html(JSON.stringify(body||{error:error||'DIAGNOSTICS_UNAVAILABLE'},null,2))+'</pre></details><p class="diagnostic-note">完整对账重新读取三库属性，补齐字段；不扫描页面正文、不修改 Notion。字段计数与异常见技术详情，多人员统计按每位分别计入，不代表记录数。</p>';target.innerHTML=output;}
 let diagnosticsInFlight=false;
 async function refreshDiagnostics(){if(diagnosticsInFlight)return;diagnosticsInFlight=true;try{renderDiagnostics(await request('/api/diagnostics'));}catch(error){renderDiagnostics(null,error.message);}finally{diagnosticsInFlight=false;}}
 syncButton.onclick=()=>{window.CalendarUI.close();sync();};
