@@ -23,6 +23,10 @@
     },
     "api/diagnostics.mjs": {
       "maxDuration": 30
+    },
+    "server.mjs": {
+      "maxDuration": 60,
+      "includeFiles": "web/**"
     }
   },
   "routes": [

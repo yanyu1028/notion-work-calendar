@@ -1,6 +1,6 @@
 {
-  "appVersion": "1.1.0",
-  "preparedAt": "2026-10-10T11:43:53.504984+00:00",
+  "appVersion": "1.1.1",
+  "preparedAt": "2026-10-10T12:01:08.018118+00:00",
   "engineeringComplete": true,
   "cloudPublished": false,
   "liveNotionVerified": false,
@@ -9,7 +9,7 @@
   "vercelChangesPerformed": false,
   "notionWritesPerformed": false,
   "automatedTests": {
-    "passed": 45,
+    "passed": 48,
     "failed": 0,
     "data": "synthetic and mocked Redis REST"
   },
@@ -21,5 +21,8 @@
   "cacheNamespace": "notion-calendar:v1:snapshot",
   "cacheSchemaVersion": 1,
   "graphDataPolicy": "isolated, never read or write graph snapshot keys",
-  "cronEnabledByDefault": false
+  "cronEnabledByDefault": false,
+  "fix": "default request handler export for auto-detected root server.mjs",
+  "observedError": "Invalid export found in module /var/task/server.mjs",
+  "cloudFixVerified": false
 }

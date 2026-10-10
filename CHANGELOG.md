@@ -1,3 +1,11 @@
+# 1.1.1 — Vercel 服务入口修复
+
+- 根据真实日志 Invalid export found in module /var/task/server.mjs 修复：根入口提供默认 request/response 函数。
+- 保留本地开发 named server，但 Vercel 导入时不主动 listen。
+- 根入口也显式打包 web/**，避免入口自动检测后遗漏登录页/前端资源。
+- 无 request.query helper 的原生请求也能处理 /api/site?path= 重写。
+- 不修改 Redis 数据结构/命名空间或认证策略；未添加 APP_PASSWORD 的认证方式仍待用户确认。
+
 # 1.1.0
 
 - 新增单 APP_PASSWORD 模式，服务器 scrypt 派生用途隔离会话签名密钥；可兼容旧哈希+SESSION_SECRET 模式。
