@@ -705,7 +705,8 @@ const fmt=v=>InlineChartRuntime.formatValue(v,'count');
 const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const parse=s=>new Date(s+'T00:00:00Z'),iso=d=>d.toISOString().slice(0,10);
 const add=(d,n)=>new Date(d.getTime()+n*86400000),first=(y,m)=>new Date(Date.UTC(y,m,1)),last=(y,m)=>new Date(Date.UTC(y,m+1,0));
-const state={mode:'month',anchor:parse(meta.snapshot_date),dateMode:'due',sources:new Set(['note','task','project']),side:{type:'date',date:meta.snapshot_date},selectedDate:meta.snapshot_date,history:[],theme:'auto',nodeFilter:'all',statusFilter:'all',sortKey:'start',sortDirection:'asc',sortGroup:true,nameWidth:240,fields:{project:[],task:[],note:[]}};
+const chinaToday=()=>new Intl.DateTimeFormat('sv-SE',{timeZone:'Asia/Shanghai',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());let today=chinaToday();
+const state={mode:'month',anchor:parse(today),dateMode:'due',sources:new Set(['note','task','project']),side:null,selectedDate:today,history:[],theme:'auto',nodeFilter:'all',statusFilter:'all',sortKey:'start',sortDirection:'asc',sortGroup:true,nameWidth:240,fields:{project:[],task:[],note:[]}};
 const isoWeek=d=>{const t=parse(d),day=(t.getUTCDay()+6)%7;t.setUTCDate(t.getUTCDate()+3-day);const year=t.getUTCFullYear(),a=new Date(Date.UTC(year,0,4));a.setUTCDate(a.getUTCDate()+3-((a.getUTCDay()+6)%7));return {year,week:1+Math.round((t-a)/604800000)};};
 const statSpecs={project_start:{kind:'project',date:'start_date',label:'开始项目'},project_due:{kind:'project',date:'due_date',label:'到期项目'},task_start:{kind:'task',date:'start_date',label:'开始任务'},task_due:{kind:'task',date:'due_date',label:'到期任务'},note_created:{kind:'note',date:'start_date',label:'创建笔记'}};
 const statSpec=()=>statSpecs[$('stats-source').value]||statSpecs.task_due;
@@ -725,9 +726,10 @@ const syncNodeFilters=()=>{
 const restoreNodeFilters=()=>{state.nodeFilter='all';state.statusFilter='all';renderAll();};
 const filterDescription=()=>[$('node-filter').selectedOptions[0]?.textContent,state.statusFilter==='all'||state.nodeFilter==='note'?'':state.statusFilter,$('search').value?'搜索“'+$('search').value+'”':''].filter(Boolean).join(' · ');
 const storageKey='notion-calendar-ui-v1';
-const saveSettings=()=>{try{localStorage.setItem(storageKey,JSON.stringify({dateMode:state.dateMode,mode:state.mode,nodeFilter:state.nodeFilter,statusFilter:state.statusFilter,sortKey:state.sortKey,sortDirection:state.sortDirection,sortGroup:state.sortGroup,fields:state.fields,theme:state.theme,nameWidth:state.nameWidth,search:$('search').value,searchMode:$('search-mode').value,condition:$('search-condition').value,scope:$('search-scope').value,stat:$('stats-source').value}));}catch{}};
+const saveSettings=()=>{try{localStorage.setItem(storageKey,JSON.stringify({anchor:iso(state.anchor),selectedDate:state.selectedDate,dateMode:state.dateMode,mode:state.mode,nodeFilter:state.nodeFilter,statusFilter:state.statusFilter,sortKey:state.sortKey,sortDirection:state.sortDirection,sortGroup:state.sortGroup,fields:state.fields,theme:state.theme,nameWidth:state.nameWidth,search:$('search').value,searchMode:$('search-mode').value,condition:$('search-condition').value,scope:$('search-scope').value,stat:$('stats-source').value}));}catch{}};
 const loadSettings=()=>{try{
  const c=JSON.parse(localStorage.getItem(storageKey)||'null');if(!c)return;
+ if(typeof c.anchor==='string'&&/^\d{4}-\d{2}-\d{2}$/.test(c.anchor)&&!Number.isNaN(+parse(c.anchor))&&iso(parse(c.anchor))===c.anchor)state.anchor=parse(c.anchor);if(typeof c.selectedDate==='string'&&/^\d{4}-\d{2}-\d{2}$/.test(c.selectedDate)&&!Number.isNaN(+parse(c.selectedDate))&&iso(parse(c.selectedDate))===c.selectedDate)state.selectedDate=c.selectedDate;
  if(['start','due','continuous'].includes(c.dateMode))state.dateMode=c.dateMode;
  if(['week','month','quarter','year'].includes(c.mode))state.mode=c.mode;
  if(['all','project','task','note'].includes(c.nodeFilter))state.nodeFilter=c.nodeFilter;
@@ -757,7 +759,8 @@ const openSettingsTab=(index,focusTab=false)=>{
  if(focusTab)$(settingsTabs[index][0]).focus();
 };
 const bindConfig=()=>{
- $('view-settings-toggle').onclick=()=>{if($('view-settings-panel').hidden)openSettingsTab(activeSettingsTab);else closeConfigPanels();};
+ window.CalendarUI.setViewCloser(closeConfigPanels);
+ $('view-settings-toggle').onclick=()=>{window.CalendarUI.close();if($('view-settings-panel').hidden)openSettingsTab(activeSettingsTab);else closeConfigPanels();};
  settingsTabs.forEach(([button],i)=>{
   $(button).onclick=()=>openSettingsTab(i);
   $(button).onkeydown=e=>{let next;if(e.key==='ArrowRight')next=(i+1)%3;else if(e.key==='ArrowLeft')next=(i+2)%3;else if(e.key==='Home')next=0;else if(e.key==='End')next=2;if(next!==undefined){e.preventDefault();e.stopPropagation();openSettingsTab(next,true);}};
@@ -775,7 +778,7 @@ const bindConfig=()=>{
  };
  $('gantt-locate').onchange=()=>locateDate($('gantt-locate').value);
  $('locate-snapshot').onclick=()=>locateDate(meta.snapshot_date);
- $('locate-hint').textContent='数据快照：'+meta.snapshot_date+'；日历“今天”指系统日期。';
+ $('locate-hint').textContent='定位后保留此面板；“今天”按 Asia/Shanghai 日期判断。';
 };
 
 const byUrl=new Map(),adj=new Map();
@@ -813,7 +816,7 @@ const buildSearchFields=()=>new Map(data.map(r=>[r.url,[
  ['projects','关联项目',names(r.effective_projects).join('、')]
 ].filter(x=>x[2]).map(([key,name,raw])=>({key,name,raw,text:normalizeSearch(raw)}))]));
 let searchFields=buildSearchFields();
-const searchDefaults={mode:'loose',condition:'all',scope:'title'};
+const searchDefaults={mode:'exact',condition:'all',scope:'title'};
 let searchMeta=new Map(),searchQueries=[];
 const refreshSearch=()=>{
  searchQueries=parseSearch($('search').value);searchMeta=new Map();
@@ -846,13 +849,13 @@ const sortRows=rows=>[...rows].sort((a,b)=>{
  const cmp=am?0:typeof av==='number'?av-bv:String(av).localeCompare(String(bv),'zh');
  return (state.sortDirection==='desc'?-cmp:cmp)||a.title.localeCompare(b.title,'zh');
 });
-const overdue=r=>r.kind==='task'&&r.status!=='已归档'&&r.due_date&&r.due_date<meta.snapshot_date;
-const remaining=r=>!r.due_date?'未设置':r.status==='已归档'?'已归档':(()=>{const n=Math.round((parse(r.due_date)-parse(meta.snapshot_date))/86400000);return n===0?'快照当天到期':n>0?'剩余 '+fmt(n)+' 天':'逾期 '+fmt(-n)+' 天';})();
+const overdue=r=>r.kind==='task'&&r.status!=='已归档'&&r.due_date&&r.due_date<today;
+const remaining=r=>!r.due_date?'未设置':r.status==='已归档'?'已归档':(()=>{const n=Math.round((parse(r.due_date)-parse(today))/86400000);return n===0?'今天到期':n>0?'剩余 '+fmt(n)+' 天':'逾期 '+fmt(-n)+' 天';})();
 const metricTitle=(kind)=>kind==='note'?'创建笔记':({start:'开始',due:'到期',continuous:'覆盖'}[state.dateMode])+label[kind];
 const dateNavLabel=d=>{const n=dateRows(d).length;return `${d}，${fmt(n)}项`;};
-const dateButton=(d,display,cls='date-button')=>`<button type="button" class="${cls} ${state.selectedDate===d?'selected-date':''}" data-day="${d}" tabindex="${state.selectedDate===d?'0':'-1'}" aria-pressed="${state.selectedDate===d}" aria-label="${esc(dateNavLabel(d))}">${display}</button>`;
+const dateButton=(d,display,cls='date-button')=>`<button type="button" class="${cls} ${state.selectedDate===d?'selected-date':''} ${d===today?'today-date':''}" data-day="${d}" tabindex="${state.selectedDate===d?'0':'-1'}" aria-pressed="${state.selectedDate===d}" aria-label="${esc(dateNavLabel(d))}">${display}</button>`;
 const goSide=(next,push=true)=>{
- if(push&&state.side)state.history.push(state.side);
+ if(push&&state.side)state.history.push({...state.side,_scroll:$('side-content').scrollTop});
  state.side=next;renderSidebar();renderCalendar();
  if(innerWidth<=680)$('side').scrollIntoView({behavior:'auto',block:'start'});
 };
@@ -867,8 +870,9 @@ let renderedSideKey=null;
 const renderSidebar=()=>{
  const side=state.side;
  const sideKey=side?JSON.stringify([side.type,side.url||side.date||side.title||'']):'';
- const sidebarScroll=sideKey===renderedSideKey?$('side').scrollTop:0;
- renderedSideKey=sideKey;$('side').scrollTop=sidebarScroll;
+ const sidebarScroll=sideKey===renderedSideKey?$('side-content').scrollTop:(side?._scroll||0);
+ $('side').classList.toggle('side-panel-open',Boolean(side));
+ renderedSideKey=sideKey;$('side-content').scrollTop=sidebarScroll;
  $('side-back').disabled=!state.history.length;
  $('side-crumb').textContent=[...state.history.slice(-2),side].filter(Boolean).map(x=>x.type==='date'?x.date:x.type==='record'?byUrl.get(x.url)?.title:x.type==='category'?x.title:'搜索结果').join(' › ');
  if(!side){$('side-content').innerHTML='<div class="side-empty"><strong>选择一个日期或事项</strong>查看当天全部内容，再逐层浏览关联记录。</div>';$('side-crumb').textContent='';return;}
@@ -899,7 +903,7 @@ const renderSidebar=()=>{
   html+=`<a class="external-link" href="${esc(r.url)}" target="_blank" rel="noopener noreferrer">打开 Notion 页面 ↗</a><h3>直接关联 · ${fmt(rs.length)}</h3>${rs.length?grouped(rs):'<div class="side-note">暂无已载入的直接关联。</div>'}`;
  }
  $('side-content').innerHTML=html;
- $('side').scrollTop=sidebarScroll;
+ $('side-content').scrollTop=sidebarScroll;
  $('side-content').querySelectorAll('[data-open]').forEach(b=>b.onclick=()=>selectRecord(b.dataset.open));
  if($('open-month'))$('open-month').onclick=()=>{state.mode='month';state.anchor=parse(state.side.date);renderAll();};
 };
@@ -949,7 +953,7 @@ const renderMonth=()=>{
 const heatTitle=(day,rows)=>`${day} · ${fmt(rows.length)}项\n`+['project','task','note'].map(k=>`${label[k]} ${fmt(rows.filter(r=>r.kind===k).length)}`).join(' / ');
 const heatCell=(d,mobile=false)=>{
  const rows=dateRows(d),level=heatLevel(rows.length);
- return `<button type="button" class="heat-cell ${state.selectedDate===d?'selected':''}" data-day="${d}" tabindex="${state.selectedDate===d?'0':'-1'}" aria-pressed="${state.selectedDate===d}" data-level="${level}" title="${esc(heatTitle(d,rows))}" aria-label="${esc(heatTitle(d,rows))}">${mobile?parse(d).getUTCDate():''}</button>`;
+ return `<button type="button" class="heat-cell ${state.selectedDate===d?'selected':''}" data-today="${d===today}" data-day="${d}" tabindex="${state.selectedDate===d?'0':'-1'}" aria-pressed="${state.selectedDate===d}" data-level="${level}" title="${esc(heatTitle(d,rows))}" aria-label="${esc(heatTitle(d,rows))}">${mobile?parse(d).getUTCDate():''}</button>`;
 };
 const renderHeat=()=>{
  const [lo,hi]=period(),start=add(parse(lo),-((parse(lo).getUTCDay()+6)%7)),end=add(parse(hi),6-((parse(hi).getUTCDay()+6)%7));
@@ -1119,7 +1123,7 @@ const renderStats=()=>{
  $('chart-data-summary').textContent=$('stats-title').textContent+'：'+plotted.map(p=>p.key+' '+fmt(p.value)+'项').join('；');
 };
 const renderAll=()=>{
- const rows=periodRows();
+ today=chinaToday();const rows=periodRows();
  $('period-name').textContent=periodName();$('period-name').title=period().join(' — ');
  document.querySelectorAll('[data-mode]').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.mode===state.mode)));
  document.querySelectorAll('[data-source]').forEach(b=>b.setAttribute('aria-pressed',String(state.sources.has(b.dataset.source))));
@@ -1129,17 +1133,17 @@ const renderAll=()=>{
  syncNodeFilters();
  saveSettings();
  const [lo,hi]=period();if(!state.selectedDate||state.selectedDate<lo||state.selectedDate>hi)state.selectedDate=lo;
- renderCalendar();renderStats();renderSidebar();
+ renderCalendar();renderStats();renderSidebar();window.CalendarUI.refresh();
 };
 document.querySelectorAll('[data-mode]').forEach(b=>b.onclick=()=>{state.mode=b.dataset.mode;renderAll();if(state.dateMode==='continuous')calendarFocus(state.selectedDate);});
 document.querySelectorAll('[data-date-mode]').forEach(b=>b.onclick=()=>{state.dateMode=b.dataset.dateMode;state.sortKey=state.dateMode==='due'?'due':'start';$('sort-key').value=state.sortKey;renderAll();if(state.dateMode==='continuous')calendarFocus(state.selectedDate);});
 const move=n=>{const y=state.anchor.getUTCFullYear(),m=state.anchor.getUTCMonth();state.anchor=state.mode==='week'?add(state.anchor,7*n):first(y+(state.mode==='year'?n:0),m+(state.mode==='quarter'?3*n:state.mode==='month'?n:0));state.history=[];state.side=null;state.selectedDate=period()[0];renderAll();};
 $('prev').onclick=()=>move(-1);$('next').onclick=()=>move(1);
-$('snapshot-period').onclick=()=>{state.anchor=parse(meta.snapshot_date);state.selectedDate=meta.snapshot_date;state.side={type:'date',date:meta.snapshot_date};state.history=[];renderAll();};
-$('filters-toggle').onclick=()=>{const open=$('filters').hidden;$('filters').hidden=!open;$('filters-toggle').setAttribute('aria-expanded',String(open));};
+$('snapshot-period').onclick=()=>{today=chinaToday();state.anchor=parse(today);state.selectedDate=today;state.side={type:'date',date:today};state.history=[];renderAll();calendarFocus(today);};
+// Search popover toggle/outside-click/Escape is managed by ui.js.
 const doSearch=()=>{
  $('clear-search').hidden=!$('search').value;refreshSearch();state.history=[];
- state.side=searchQueries.length?{type:'search'}:{type:'date',date:state.selectedDate||meta.snapshot_date};
+ state.side=searchQueries.length?{type:'search'}:{type:'date',date:state.selectedDate||today};
  renderAll();
 };
 let searchTimer,composing=false;
@@ -1190,38 +1194,53 @@ document.addEventListener('keydown',e=>{
  else if(e.key==='Enter'&&e.target.dataset.day){e.preventDefault();selectDay(e.target.dataset.day);$('side-back').focus();}
 });
 Object.entries(searchDefaults).forEach(([k,v])=>$('search-'+k).value=v);
-loadSettings();syncConfig();bindConfig();refreshSearch();refreshDimensions();renderAll();applyTheme();
-const testApi={data,statSpec,statRows,statDate,sortRows,restoreNodeFilters,isoWeek,renderGantt,dimensionKeys,state,period,periodRows,dateRows,dimensions,dimensionKey,matches,renderAll,selectRecord,selectDay,heatLevel,navigateDate,displayRange,packWeek,refreshSearch,fieldMatch,parseSearch,renderStats};
+loadSettings();syncConfig();bindConfig();refreshSearch();refreshDimensions();renderAll();applyTheme();window.CalendarUI.setReady(true);window.CalendarUI.refresh();
+setInterval(()=>{if(chinaToday()!==today)renderAll();},60000);
+const testApi={data,chinaToday,overdue,remaining,statSpec,statRows,statDate,sortRows,restoreNodeFilters,isoWeek,renderGantt,dimensionKeys,state,period,periodRows,dateRows,dimensions,dimensionKey,matches,renderAll,selectRecord,selectDay,heatLevel,navigateDate,displayRange,packWeek,refreshSearch,fieldMatch,parseSearch,renderStats};
 const applyPayload=next=>{
+ const sc=$('calendar').querySelector('.gantt-scroll'),position=sc?{left:sc.scrollLeft,top:sc.scrollTop}:null,sidebarScroll=$('side-content').scrollTop,windowPosition={x:scrollX,y:scrollY};
  data=next.records;Object.assign(meta,next.meta);rebuildRelations();searchFields=buildSearchFields();rebuildDates();refreshSearch();
  const selectionRemoved=state.side?.type==='record'&&!byUrl.has(state.side.url);if(selectionRemoved){state.side=null;state.history=[];}
  state.history=state.history.filter(s=>s.type!=='record'||byUrl.has(s.url));
- $('locate-hint').textContent='数据快照：'+meta.snapshot_date+' '+meta.snapshot_time+'；日历“今天”指系统日期。';
- renderAll();
+ $('locate-hint').textContent='定位后保留此面板；“今天”按 Asia/Shanghai 日期判断。';
+ renderAll();if(position){const nextScroll=$('calendar').querySelector('.gantt-scroll');if(nextScroll){nextScroll.scrollLeft=position.left;nextScroll.scrollTop=position.top;}}if(!selectionRemoved)$('side-content').scrollTop=sidebarScroll;scrollTo(windowPosition.x,windowPosition.y);
  if(['localhost','127.0.0.1'].includes(location.hostname))window.snapshotTest={...testApi,data,applyPayload};
  return {selectionRemoved};
 };
 if(['localhost','127.0.0.1'].includes(location.hostname))window.snapshotTest={...testApi,applyPayload};
 return {applyPayload};
 };
-let dashboard=null,active=false;
-const status=document.getElementById('online-status'),boot=document.getElementById('boot-message'),syncButton=document.getElementById('online-sync');
-const messages={NOTION_TOKEN_REQUIRED:'同步未完成：请配置 Notion 集成密钥；已有数据保留。',DATA_SOURCE_IDS_REQUIRED:'同步未完成：请核对三库 Data Source ID 配置；已有数据保留。',NOTION_HTTP_401:'Notion 集成密钥无效。',NOTION_HTTP_403:'Notion 集成没有读取权限。',NOTION_HTTP_404:'Notion 数据源不存在或未授权。',PERSISTENT_CACHE_REQUIRED:'请配置持久 Redis 缓存。',CACHE_UNAVAILABLE:'Redis 暂不可用，已有显示数据不会被清空。',RATE_LIMITED:'操作过于频繁，请稍后重试。'};
-async function request(path,options={}){const response=await fetch(path,{credentials:'omit',cache:'no-store',...options,headers:{...(options.method==='POST'?{'x-calendar-request':'1'}:{}),...options.headers}});const body=await response.json();if(!response.ok)throw Error(body.error||'SERVICE_UNAVAILABLE');return body;}
+let dashboard=null,active=false,lastClient=null,displayedMeta=null,diagnosticsTimer=null;
+const syncButton=document.getElementById('online-sync'),dialog=document.getElementById('diagnostics-dialog'),target=document.getElementById('diagnostics-content');
+const messages={NOTION_TOKEN_REQUIRED:'缺少 Notion 集成密钥。',DATA_SOURCE_IDS_REQUIRED:'请核对三个数据源 ID。',NOTION_HTTP_401:'Notion 集成密钥无效。',NOTION_HTTP_403:'Notion 集成没有读取权限。',NOTION_HTTP_404:'Notion 数据源不存在或未授权。',PERSISTENT_CACHE_REQUIRED:'未配置持久 Redis 缓存。',CACHE_UNAVAILABLE:'Redis 暂不可用。',RATE_LIMITED:'操作过于频繁，请稍后重试。',ORIGIN_REJECTED:'当前域名与 APP_URL/平台域名不一致。',REQUEST_FAILED:'网络请求未完成。',INVALID_RESPONSE:'服务器返回内容异常。'};
+const html=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+function signalError(value){const dot=document.querySelector('.diagnostic-dot');dot.hidden=!value;document.getElementById('sync-menu-toggle').setAttribute('aria-label',value?'同步选项与诊断：有新的异常':'同步选项与诊断');}
+function recordResult(value){lastClient={...value,at:new Date().toISOString()};if(value.status==='error')signalError(true);if(dialog.open)refreshDiagnostics();}
+async function request(path,options={}){let response;try{response=await fetch(path,{credentials:'omit',cache:'no-store',signal:AbortSignal.timeout(path.startsWith('/api/sync')?65000:15000),...options,headers:{...(options.method==='POST'?{'x-calendar-request':'1'}:{}),...options.headers}});}catch{throw Error('REQUEST_FAILED');}let body;try{body=await response.json();}catch{throw Error('INVALID_RESPONSE');}if(!response.ok)throw Error(body.error||'SERVICE_UNAVAILABLE');return body;}
 function validPayload(value){return value&&Array.isArray(value.records)&&value.meta&&/^\d{4}-\d{2}-\d{2}$/.test(value.meta.snapshot_date)&&value.records.every(r=>['project','task','note'].includes(r.kind)&&/^https:\/\/www\.notion\.so\/[a-f0-9]{32}$/.test(r.url)&&[r.projects,r.related,r.effective_projects,r.inherited_projects,r.people].every(Array.isArray)&&[r.start_date,r.due_date].every(d=>d===null||/^\d{4}-\d{2}-\d{2}$/.test(d)));}
-async function loadData(){const payload=await request('/api/calendar');if(!validPayload(payload))throw Error('INVALID_DATA');let update;if(!dashboard)dashboard=initializeDashboard(payload);else update=dashboard.applyPayload(payload);document.getElementById('dashboard').hidden=false;boot.hidden=true;document.getElementById('online-data').textContent='当前数据：'+payload.meta.snapshot_date+' '+payload.meta.snapshot_time+'（Asia/Shanghai） · 在线版 1.2.0';status.textContent=update?.selectionRemoved?'同步完成，所选记录已不在当前数据源中。':'数据已连接。';}
-async function sync({auto=false,full=false}={}){if(active)return;active=true;syncButton.disabled=true;document.getElementById('online-full').disabled=true;const until=Date.now()+180000;
+
+async function loadData(){const payload=await request('/api/calendar');if(!validPayload(payload))throw Error('INVALID_DATA');let update;if(!dashboard)dashboard=initializeDashboard(payload);else update=dashboard.applyPayload(payload);displayedMeta=payload.meta;document.getElementById('dashboard').hidden=false;document.getElementById('loading-placeholder').hidden=true;window.CalendarUI.fitSide();return update;}
+function busy(value){active=value;syncButton.disabled=value;syncButton.setAttribute('aria-busy',String(value));document.getElementById('online-full').disabled=value;}
+async function sync({auto=false,full=false}={}){if(active)return;busy(true);const started=Date.now(),until=started+180000;let attempts=0;
  try{let mode=auto?'?auto=1':full?'?full=1':'';
-  while(Date.now()<until){status.textContent='正在同步数据库；已有日历仍可操作。';const result=await request('/api/sync'+mode,{method:'POST'});mode='';if(['complete','skipped'].includes(result.status)){await loadData();return;}status.textContent=result.status==='busy'?'其他请求正在同步，等待完成…':'同步进度已保存，正在断点续传…';await new Promise(r=>setTimeout(r,result.status==='busy'?2000:500));}
-  status.textContent='同步进度已保存，本轮暂停。再次点击同步可继续。';
- }catch(error){const message=messages[error.message]||'同步未完成（'+error.message+'），已有数据保留，可稍后重试。';status.textContent=message;if(!dashboard){boot.textContent=message;boot.hidden=false;}}
- finally{active=false;syncButton.disabled=false;document.getElementById('online-full').disabled=false;}
+  while(Date.now()<until){const result=await request('/api/sync'+mode,{method:'POST'});mode='';if(['complete','skipped'].includes(result.status)){const update=await loadData();recordResult({...result,auto,durationMs:Date.now()-started,selectionRemoved:Boolean(update?.selectionRemoved)});return;}recordResult({...result,auto});attempts++;await new Promise(r=>setTimeout(r,result.status==='busy'?Math.min(8000,1000*2**Math.min(attempts,3)):1000));}
+  recordResult({status:'paused',auto,durationMs:Date.now()-started});
+ }catch(error){recordResult({status:'error',error:error.message,auto,durationMs:Date.now()-started,retainedData:Boolean(dashboard)});}
+ finally{busy(false);}
 }
-async function start(){try{try{await loadData();}catch(error){if(error.message!=='BOOTSTRAP_REQUIRED')throw error;}syncButton.disabled=false;await sync({auto:true});}catch(error){status.textContent=messages[error.message]||'连接未完成（'+error.message+'），可点击同步重试。';boot.textContent=status.textContent;syncButton.disabled=false;}}
-syncButton.onclick=()=>sync();
-const dialog=document.getElementById('diagnostics-dialog');document.getElementById('diagnostics-close').onclick=()=>dialog.close();
-document.getElementById('online-diagnostics').onclick=async()=>{dialog.showModal();const target=document.getElementById('diagnostics-content');target.textContent='正在读取…';try{target.textContent=JSON.stringify(await request('/api/diagnostics'),null,2);}catch(error){target.textContent=messages[error.message]||error.message;}};
+const when=value=>value?new Date(value).toLocaleString('zh-CN',{timeZone:'Asia/Shanghai',hour12:false})+'（Asia/Shanghai）':'暂无记录';
+const statusNames={complete:'同步完成',skipped:'检查完成，无需更新',running:'正在同步',paused:'进度已保存，等待继续',busy:'另一个请求正在同步',error:'同步未完成'};
+const countsText=counts=>counts?['project','task','note'].map((k,i)=>['项目','任务','笔记'][i]+' '+(counts[k]??0)).join(' · '):'暂无有效数据';
+function row(key,value){return `<dt>${html(key)}</dt><dd>${html(value)}</dd>`;}
+function renderDiagnostics(body,error){const local=lastClient,last=body?.lastCompletedSync,snapshotCounts=body?.counts||displayedMeta?.counts;let output='<h3>本页最近检查 / 操作</h3><dl class="diagnostic-summary">';output+=row('结果',local?statusNames[local.status]||local.status:'尚未检查');if(local){output+=row('时间',when(local.at));if(local.durationMs!==undefined)output+=row('耗时',(local.durationMs/1000).toFixed(1)+' 秒');if(local.error)output+=row('原因',messages[local.error]||local.error);if(local.status==='error')output+=row('已有显示',local.retainedData?'保留，不清空':'当前尚无有效日历数据');if(local.selectionRemoved)output+=row('所选记录','已不在当前数据源中，详情已关闭');}output+='</dl><h3>服务器最近完成的同步</h3><dl class="diagnostic-summary">'+row('完成时间',when(last?.finishedAt));if(last)output+=row('差异记录',`新增 ${last.added??0} · 更新 ${last.updated??0} · 移除 ${last.deleted??0}`);if(body?.sync&&body.sync.status!=='complete'){output+=row('当前任务',statusNames[body.sync.status]||body.sync.status);if(body.sync.error)output+=row('任务异常',messages[body.sync.error]||body.sync.error);}output+='</dl><h3>当前有效数据</h3><dl class="diagnostic-summary">'+row('数据时间',when(body?.generatedAt||displayedMeta?.generatedAt))+row('记录数量',countsText(snapshotCounts))+row('缓存方式',body?.cacheMode||'暂未读取')+row('应用版本',body?.appVersion||'1.3.0')+'</dl>';if(error)output+='<p class="diagnostic-note">诊断读取失败：'+html(messages[error]||error)+'。以上本页结果仍可查看。</p>';output+='<details><summary>数据检查与技术详情</summary><pre>'+html(JSON.stringify(body||{error:error||'DIAGNOSTICS_UNAVAILABLE'},null,2))+'</pre></details><p class="diagnostic-note">完整对账只校验三库记录，不扫描正文、不修改 Notion。检查跳过与数据同步完成分别记录。</p>';target.innerHTML=output;}
+let diagnosticsInFlight=false;
+async function refreshDiagnostics(){if(diagnosticsInFlight)return;diagnosticsInFlight=true;try{renderDiagnostics(await request('/api/diagnostics'));}catch(error){renderDiagnostics(null,error.message);}finally{diagnosticsInFlight=false;}}
+syncButton.onclick=()=>{window.CalendarUI.close();sync();};
+document.getElementById('online-diagnostics').onclick=()=>{window.CalendarUI.close();signalError(false);dialog.showModal();renderDiagnostics(null);refreshDiagnostics();clearInterval(diagnosticsTimer);diagnosticsTimer=setInterval(()=>{if(active&&dialog.open)refreshDiagnostics();},5000);};
+document.getElementById('diagnostics-refresh').onclick=refreshDiagnostics;
+document.getElementById('diagnostics-close').onclick=()=>dialog.close();dialog.addEventListener('close',()=>{clearInterval(diagnosticsTimer);diagnosticsTimer=null;});
 document.getElementById('online-full').onclick=()=>{dialog.close();sync({full:true});};
+async function start(){try{try{await loadData();}catch(error){if(error.message!=='BOOTSTRAP_REQUIRED')throw error;}syncButton.disabled=false;await sync({auto:true});}catch(error){recordResult({status:'error',error:error.message,retainedData:Boolean(dashboard)});syncButton.disabled=false;}}
 window.addEventListener('pageshow',event=>{if(event.persisted)location.reload();});
 start();
 })()

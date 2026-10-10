@@ -1,71 +1,54 @@
-<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Notion 工作日历 · 在线版</title><link rel="stylesheet" href="/styles.css"><script defer src="/vendor/chart.umd.js"></script><script defer src="/app.js"></script></head><body>
+<!DOCTYPE html>
 
-
-
-
-
-
+<html lang="zh-CN"><head><meta charset="utf-8"/><meta content="width=device-width,initial-scale=1" name="viewport"/><title>Notion 工作日历 · 在线版</title><link href="/styles.css" rel="stylesheet"/><script defer="" src="/vendor/chart.umd.js"></script><script defer="" src="/ui.js"></script><script defer="" src="/app.js"></script></head><body>
 <main class="app">
- <div class="online-bar"><div class="online-status"><span id="online-data">尚无有效数据 · 在线版 1.2.0</span><span id="online-status" role="status" aria-live="polite">正在读取在线数据…</span></div><button id="online-sync" disabled>同步数据</button><button id="online-diagnostics">诊断</button></div>
- <div id="boot-message" class="boot-message">正在连接服务器。首次初始化需要读取三个数据库；失败时可重试，不会使用演示数据。</div>
- <div id="dashboard" hidden>
-  <div class="tools unified-tools" aria-label="搜索与日期导航">
-    <div class="search-wrap"><input id="search" type="search" aria-label="搜索记录" placeholder="搜索项目、任务或笔记"><button id="clear-search" aria-label="清空搜索" type="button" hidden>×</button></div>
-    <button id="filters-toggle" type="button" aria-expanded="false">搜索设置</button>
-    <div class="group" aria-label="周期"><button type="button" data-mode="week">周</button><button type="button" data-mode="month">月</button><button type="button" data-mode="quarter">季</button><button type="button" data-mode="year">年</button></div>
-    <div class="group date-inline" aria-label="日期显示"><button type="button" data-date-mode="start">开始</button><button type="button" data-date-mode="due">截止</button><button type="button" data-date-mode="continuous">连续</button></div>
-    <div class="group node-status-filters" aria-label="节点和状态筛选"><select id="node-filter" aria-label="节点筛选"><option value="all">全部节点</option><option value="project">仅项目</option><option value="task">仅任务</option><option value="note">仅笔记</option></select><select id="status-filter" aria-label="状态筛选" aria-describedby="status-filter-hint"><option value="all">全部状态</option><option value="进行中">进行中</option><option value="未开始">未开始</option><option value="已归档">已归档</option></select></div><span id="status-filter-hint" class="sr-only"></span><button id="theme-toggle" type="button">主题：自动</button>
-    <div class="group period-tools"><button id="prev" aria-label="上一期" type="button">←</button><span id="period-name" class="period-name"></span><button id="next" aria-label="下一期" type="button">→</button><button id="snapshot-period" type="button">快照当期</button></div>
-  </div>
-  <div id="filters" class="search-settings-box" hidden>
-    <label>匹配方式<select id="search-mode"><option value="exact">精准包含</option><option value="loose" selected>宽松匹配</option><option value="typo">错别字容错</option></select></label>
-    <label>关键词条件<select id="search-condition"><option value="all">全部满足</option><option value="any">任一满足</option></select></label>
-    <label>搜索范围<select id="search-scope"><option value="title">仅标题</option><option value="content">标题与描述 / 备注</option><option value="all">全部字段</option></select></label>
-    <button id="search-reset" type="button">恢复默认</button>
-  </div>
-  <div id="layout" class="layout">
-    <div class="main">
-      <section class="panel calendar-panel" aria-label="工作日历">
-        <div class="panel-control-row"><div class="metrics" aria-live="polite"><span><span id="count-label-project">到期项目</span><b id="count-project"></b></span><span><span id="count-label-task">到期任务</span><b id="count-task"></b></span><span><span id="count-label-note">创建笔记</span><b id="count-note"></b></span><span>快照时逾期任务<b id="count-overdue"></b></span></div><div class="view-actions"><button id="view-settings-toggle" type="button" aria-expanded="false" aria-controls="view-settings-panel" title="定位日期、排序、显示字段">视图设置<span class="settings-caret" aria-hidden="true"></span></button></div></div>
-        <div id="view-settings-panel" class="view-settings-panel" hidden>
-          <div class="view-settings-tabs" role="tablist" aria-label="视图设置功能">
-            <button id="gantt-locate-toggle" role="tab" aria-selected="true" tabindex="0" aria-controls="gantt-locate-panel" type="button">定位日期</button>
-            <button id="sort-toggle" role="tab" aria-selected="false" tabindex="-1" aria-controls="sort-panel" type="button">排序</button>
-            <button id="fields-toggle" role="tab" aria-selected="false" tabindex="-1" aria-controls="fields-panel" type="button">显示字段</button>
-          </div>
-          <div id="gantt-locate-panel" class="config-panel locate-config" role="tabpanel" aria-labelledby="gantt-locate-toggle" hidden><label id="gantt-locate-wrap">定位日期<input type="date" id="gantt-locate" aria-label="定位日期并跳转当前视图" aria-describedby="locate-hint"></label><button id="locate-snapshot" type="button" title="定位到数据快照日期，不是系统今天">快照日期</button><span id="locate-feedback" role="status" aria-live="polite"></span><small id="locate-hint" class="locate-hint"></small></div>
-          <div id="sort-panel" class="config-panel" role="tabpanel" aria-labelledby="sort-toggle" hidden><label>排序依据<select id="sort-key"><option value="start">开始 / 创建日期</option><option value="due">截止日期</option><option value="duration">持续天数</option><option value="status">状态</option><option value="priority">优先级</option><option value="title">标题</option></select></label><label>顺序<select id="sort-direction"><option value="asc">升序</option><option value="desc">降序</option></select></label><label class="check-label"><input id="sort-group" type="checkbox" checked>保持类型分组</label></div>
-        <div id="fields-panel" class="config-panel fields-config" role="tabpanel" aria-labelledby="fields-toggle" hidden></div>
-          <div class="settings-reset-actions" aria-label="恢复设置"><button id="restore-filters" type="button" title="仅恢复全部节点和状态；保留搜索、日期、排序及显示字段">恢复全部筛选</button><button id="restore-display" type="button" title="仅恢复默认排序、显示字段和事项列宽；不改变筛选、搜索、日期或主题">恢复默认显示</button></div>
-        </div>
-        <div id="heat-options" class="heat-options">
-          <p id="heat-description" class="heat-description">按截止／创建日期统计</p>
-          <div class="heat-key" aria-label="热力颜色图例"><span><i class="heat-swatch" data-level="0"></i>0</span><span><i class="heat-swatch" data-level="1"></i>1</span><span><i class="heat-swatch" data-level="2"></i>2</span><span><i class="heat-swatch" data-level="3"></i>3–4</span><span><i class="heat-swatch" data-level="4"></i>5+</span></div>
-        </div>
-        <div id="calendar"></div>
-      </section>
-      <section class="panel stats-panel">
-        <div class="stats-head"><h2>周期内分类统计</h2><div class="stats-selects"><label>统计对象<select id="stats-source"><option value="project_start">开始项目</option><option value="project_due">到期项目</option><option value="task_start">开始任务</option><option value="task_due" selected>到期任务</option><option value="note_created">创建笔记</option></select></label><label>统计维度<select id="stats-dimension"><option value="category">任务类别</option><option value="status">当前状态</option><option value="priority">优先级</option><option value="projects">关联项目</option></select></label><label>图形<select id="stats-shape"><option value="horizontal">横向柱形图</option><option value="vertical">纵向柱形图</option><option value="ring">环形图</option></select></label></div></div>
-        <div class="chart-figure">
-          <div class="figure-header"><div class="figure-title" id="stats-title">分类统计</div><div class="figure-aside" id="stats-aside"></div></div>
-          
-          <p id="stats-context" class="stats-context">周期与筛选同步，日期口径由统计对象决定。当前按任务截止日期统计，不代表完成量。</p>
-          <p id="chart-data-summary" class="sr-only"></p>
-          <div id="chart-legend" class="category-legend"></div>
-          <div class="chart-wrap" style="height:315px"><canvas id="distribution" role="img" aria-label="工作日历分类统计">类别及数值可通过图表提示查看。</canvas><div class="chart-tooltip" role="tooltip" aria-hidden="true"></div></div>
-          <div id="chart-empty" class="chart-empty" hidden></div>
-        </div>
-      </section>
-    </div>
-    <button id="splitter" class="splitter" type="button" role="separator" aria-orientation="vertical" aria-label="调整详情栏宽度" aria-valuemin="280" aria-valuemax="520" aria-valuenow="358"></button>
-    <aside id="side" class="panel side" aria-label="逐层详情">
-      <div class="side-toolbar"><button id="side-back" type="button" disabled>← 返回</button><button id="side-close" type="button" aria-label="关闭当前详情">×</button></div>
-      <div id="side-crumb" class="crumb"></div>
-      <div id="side-content"><div class="side-empty"><strong>选择一个日期或事项</strong>在这里查看详情和关联记录。</div></div>
-    </aside>
-  </div>
-  </div><noscript><p>此看板需要启用 JavaScript 才能使用热力日历、筛选及侧栏。</p></noscript>
+<div aria-label="搜索与日期导航" class="tools unified-tools"><div class="search-wrap"><input aria-label="搜索记录" id="search" placeholder="精准包含 · 全部满足 · 仅标题" type="search"/><button aria-label="清空搜索" hidden="" id="clear-search" type="button">×</button><button aria-controls="filters" aria-expanded="false" aria-label="搜索设置" id="filters-toggle" title="搜索设置" type="button"><svg aria-hidden="true" fill="none" height="17" stroke="currentColor" stroke-width="1.7" viewbox="0 0 24 24" width="17"><path d="M4 6h16M4 12h16M4 18h16"></path><circle cx="9" cy="6" fill="var(--app-panel)" r="2"></circle><circle cx="15" cy="12" fill="var(--app-panel)" r="2"></circle><circle cx="9" cy="18" fill="var(--app-panel)" r="2"></circle></svg></button></div><button aria-controls="period-popover" aria-expanded="false" class="menu-trigger" id="period-toggle" type="button"><span>月</span><i aria-hidden="true" class="ui-caret"></i></button><button aria-controls="date-mode-popover" aria-expanded="false" class="menu-trigger" id="date-mode-toggle" type="button"><span>截止</span><i aria-hidden="true" class="ui-caret"></i></button><button aria-controls="node-status-popover" aria-expanded="false" class="menu-trigger" id="node-status-toggle" type="button"><span>筛选</span><i aria-hidden="true" class="ui-caret"></i></button><div class="group period-tools"><button aria-label="上一期" id="prev" type="button">←</button><span class="period-name" id="period-name"></span><button aria-label="下一期" id="next" type="button">→</button></div><button id="snapshot-period" title="定位到今天所在周期（Asia/Shanghai），保留当前筛选" type="button">现在</button><div class="sync-control"><button disabled="" id="online-sync">同步数据</button><button aria-controls="sync-popover" aria-expanded="false" aria-label="同步选项与诊断" id="sync-menu-toggle" type="button"><i aria-hidden="true" class="ui-caret"></i><span class="diagnostic-dot" hidden=""></span></button></div></div><div aria-hidden="true" class="loading-placeholder" id="loading-placeholder"><i></i><i></i><i></i></div><div aria-label="搜索设置" class="toolbar-popover search-settings-box" hidden="" id="filters">
+<label>匹配方式<select id="search-mode"><option selected="" value="exact">精准包含</option><option value="loose">宽松匹配</option><option value="typo">错别字容错</option></select></label>
+<label>关键词条件<select id="search-condition"><option value="all">全部满足</option><option value="any">任一满足</option></select></label>
+<label>搜索范围<select id="search-scope"><option value="title">仅标题</option><option value="content">标题与描述 / 备注</option><option value="all">全部字段</option></select></label>
+<button id="search-reset" type="button">恢复默认</button>
+</div><div aria-label="月选项" class="toolbar-popover" hidden="" id="period-popover" role="group"><div aria-label="周期" class="group"><button data-mode="week" type="button">周</button><button data-mode="month" type="button">月</button><button data-mode="quarter" type="button">季</button><button data-mode="year" type="button">年</button></div></div><div aria-label="截止选项" class="toolbar-popover" hidden="" id="date-mode-popover" role="group"><div aria-label="日期显示" class="group date-inline"><button data-date-mode="start" type="button">开始</button><button data-date-mode="due" type="button">截止</button><button data-date-mode="continuous" type="button">连续</button></div></div><div aria-label="筛选选项" class="toolbar-popover" hidden="" id="node-status-popover" role="group"><p class="popover-heading">节点与状态</p><div aria-label="节点和状态筛选" class="group node-status-filters"><select aria-label="节点筛选" id="node-filter"><option value="all">全部节点</option><option value="project">仅项目</option><option value="task">仅任务</option><option value="note">仅笔记</option></select><select aria-describedby="status-filter-hint" aria-label="状态筛选" id="status-filter"><option value="all">全部状态</option><option value="进行中">进行中</option><option value="未开始">未开始</option><option value="已归档">已归档</option></select><span class="sr-only" id="status-filter-hint"></span></div></div><div aria-label="同步工具" class="toolbar-popover sync-popover" hidden="" id="sync-popover" role="group"><p class="popover-heading">数据工具</p><button id="online-diagnostics">诊断信息</button></div><div hidden="" id="dashboard">
+
+<div class="layout" id="layout">
+<div class="main">
+<section aria-label="工作日历" class="panel calendar-panel">
+<div class="panel-control-row"><div aria-live="polite" class="metrics"><span><span id="count-label-project">到期项目</span><b id="count-project"></b></span><span><span id="count-label-task">到期任务</span><b id="count-task"></b></span><span><span id="count-label-note">创建笔记</span><b id="count-note"></b></span><span>当前逾期任务<b id="count-overdue"></b></span></div><div class="view-actions"><button aria-controls="view-settings-panel" aria-expanded="false" id="view-settings-toggle" title="定位日期、排序、显示字段" type="button">视图设置<span aria-hidden="true" class="settings-caret"></span></button></div></div>
+<div class="view-settings-panel" hidden="" id="view-settings-panel">
+<div aria-label="视图设置功能" class="view-settings-tabs" role="tablist">
+<button aria-controls="gantt-locate-panel" aria-selected="true" id="gantt-locate-toggle" role="tab" tabindex="0" type="button">定位日期</button>
+<button aria-controls="sort-panel" aria-selected="false" id="sort-toggle" role="tab" tabindex="-1" type="button">排序</button>
+<button aria-controls="fields-panel" aria-selected="false" id="fields-toggle" role="tab" tabindex="-1" type="button">显示字段</button>
+</div>
+<div aria-labelledby="gantt-locate-toggle" class="config-panel locate-config" hidden="" id="gantt-locate-panel" role="tabpanel"><label id="gantt-locate-wrap">定位日期<input aria-describedby="locate-hint" aria-label="定位日期并跳转当前视图" id="gantt-locate" type="date"/></label><button id="locate-snapshot" title="定位到数据快照日期，不是系统今天" type="button">快照日期</button><span aria-live="polite" id="locate-feedback" role="status"></span><small class="locate-hint" id="locate-hint">定位后保留此面板；“今天”按 Asia/Shanghai 日期判断。</small></div>
+<div aria-labelledby="sort-toggle" class="config-panel" hidden="" id="sort-panel" role="tabpanel"><label>排序依据<select id="sort-key"><option value="start">开始 / 创建日期</option><option value="due">截止日期</option><option value="duration">持续天数</option><option value="status">状态</option><option value="priority">优先级</option><option value="title">标题</option></select></label><label>顺序<select id="sort-direction"><option value="asc">升序</option><option value="desc">降序</option></select></label><label class="check-label"><input checked="" id="sort-group" type="checkbox"/>保持类型分组</label></div>
+<div aria-labelledby="fields-toggle" class="config-panel fields-config" hidden="" id="fields-panel" role="tabpanel"></div>
+<div aria-label="恢复设置" class="settings-reset-actions"><button id="restore-filters" title="仅恢复全部节点和状态；保留搜索、日期、排序及显示字段" type="button">恢复全部筛选</button><button id="restore-display" title="仅恢复默认排序、显示字段和事项列宽；不改变筛选、搜索、日期或主题" type="button">恢复默认显示</button></div>
+<div class="settings-theme-row"><span>显示主题</span><button id="theme-toggle" type="button">主题：自动</button></div></div>
+<div class="heat-options" id="heat-options">
+<p class="heat-description" id="heat-description">按截止／创建日期统计</p>
+<div aria-label="热力颜色图例" class="heat-key"><span><i class="heat-swatch" data-level="0"></i>0</span><span><i class="heat-swatch" data-level="1"></i>1</span><span><i class="heat-swatch" data-level="2"></i>2</span><span><i class="heat-swatch" data-level="3"></i>3–4</span><span><i class="heat-swatch" data-level="4"></i>5+</span></div>
+</div>
+<div id="calendar"></div>
+</section>
+<section class="panel stats-panel">
+<div class="stats-head"><h2>周期内分类统计</h2><div class="stats-selects"><label>统计对象<select id="stats-source"><option value="project_start">开始项目</option><option value="project_due">到期项目</option><option value="task_start">开始任务</option><option selected="" value="task_due">到期任务</option><option value="note_created">创建笔记</option></select></label><label>统计维度<select id="stats-dimension"><option value="category">任务类别</option><option value="status">当前状态</option><option value="priority">优先级</option><option value="projects">关联项目</option></select></label><label>图形<select id="stats-shape"><option value="horizontal">横向柱形图</option><option value="vertical">纵向柱形图</option><option value="ring">环形图</option></select></label></div></div>
+<div class="chart-figure">
+<div class="figure-header"><div class="figure-title" id="stats-title">分类统计</div><div class="figure-aside" id="stats-aside"></div></div>
+<p class="stats-context" id="stats-context">周期与筛选同步，日期口径由统计对象决定。当前按任务截止日期统计，不代表完成量。</p>
+<p class="sr-only" id="chart-data-summary"></p>
+<div class="category-legend" id="chart-legend"></div>
+<div class="chart-wrap" style="height:315px"><canvas aria-label="工作日历分类统计" id="distribution" role="img">类别及数值可通过图表提示查看。</canvas><div aria-hidden="true" class="chart-tooltip" role="tooltip"></div></div>
+<div class="chart-empty" hidden="" id="chart-empty"></div>
+</div>
+</section>
+</div>
+<button aria-label="调整详情栏宽度" aria-orientation="vertical" aria-valuemax="520" aria-valuemin="280" aria-valuenow="358" class="splitter" id="splitter" role="separator" type="button"></button>
+<aside aria-label="逐层详情" class="panel side" id="side">
+<div class="side-toolbar"><button disabled="" id="side-back" type="button">← 返回</button><button aria-label="关闭当前详情" id="side-close" type="button">×</button></div>
+<div class="crumb" id="side-crumb"></div>
+<div id="side-content"><div class="side-empty"><strong>选择一个日期或事项</strong>查看当天全部内容，再逐层浏览关联记录。</div></div>
+</aside>
+</div>
+</div><noscript><p>此看板需要启用 JavaScript 才能使用热力日历、筛选及侧栏。</p></noscript>
 </main>
-
-
-<dialog id="diagnostics-dialog" class="diagnostics-dialog" aria-labelledby="diagnostics-title"><h2 id="diagnostics-title">在线日历诊断</h2><pre id="diagnostics-content">正在读取…</pre><p>完整对账只校验三库记录，不扫描正文，也不会修改 Notion。</p><div class="diagnostics-actions"><button id="online-full">完整对账三库</button><button id="diagnostics-close">关闭</button></div></dialog></body></html>
+<dialog aria-labelledby="diagnostics-title" class="diagnostics-dialog" id="diagnostics-dialog"><h2 id="diagnostics-title">日历诊断</h2><div class="diagnostics-content" id="diagnostics-content"></div><div class="diagnostics-actions"><button id="diagnostics-refresh" type="button">刷新诊断</button><button id="online-full">完整对账三库</button><button id="diagnostics-close">关闭</button></div></dialog></body></html>

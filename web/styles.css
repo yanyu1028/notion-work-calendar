@@ -577,3 +577,28 @@ label{font-size:12px;color:var(--muted);display:flex;flex-direction:column;gap:4
 .online-status>span{display:block}.online-status #online-data{color:var(--text)}
 
 .login-card{width:calc(100% - 32px);margin:48px auto}
+
+/* v1.3: local toolbar/interaction changes only. Existing calendar/chart geometry stays intact. */
+.tools.unified-tools{position:relative;gap:6px}
+.tools.unified-tools>.search-wrap{flex:1 1 280px;min-width:220px;max-width:none}
+.tools.unified-tools .search-wrap input{padding-right:72px;border-radius:8px;outline:none;box-shadow:none;border:1px solid var(--app-line)}
+.search-wrap:focus-within{outline:none;box-shadow:none}
+.tools.unified-tools .search-wrap input:focus{outline:none;border-color:var(--app-focus);box-shadow:0 0 0 3px color-mix(in srgb,var(--app-focus) 15%,transparent)}
+.search-wrap #filters-toggle{position:absolute;right:5px;top:3px;width:30px;height:30px;min-height:30px;padding:0;display:flex;align-items:center;justify-content:center;color:var(--muted)}
+.search-wrap #clear-search{right:38px;top:3px;width:26px;height:30px;min-height:30px;padding:0}
+.ui-caret{display:inline-block;width:5px;height:5px;border-right:1.4px solid currentColor;border-bottom:1.4px solid currentColor;transform:rotate(45deg);margin:0 0 3px 8px;opacity:.65}
+.menu-trigger{display:inline-flex;align-items:center;justify-content:center}.filter-active{border-color:var(--app-focus);background:color-mix(in srgb,var(--app-focus) 10%,var(--app-panel))}
+.toolbar-popover{position:fixed;z-index:100;width:190px;box-sizing:border-box;padding:10px;border:1px solid var(--app-line);border-radius:10px;background:var(--app-panel);box-shadow:0 8px 28px rgba(0,0,0,.18);overflow-y:auto;overscroll-behavior:contain}
+.toolbar-popover .group{display:flex;flex-direction:column;gap:5px;padding:0;border:0;align-items:stretch}.toolbar-popover .group button,.toolbar-popover>button{width:100%;text-align:left;min-height:34px;padding:6px 10px;font-size:13px}
+.toolbar-popover .node-status-filters select{width:100%;max-width:none;min-width:0}.popover-heading{margin:0 0 9px;font-size:11px;color:var(--muted)}
+#filters.toolbar-popover{width:560px;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin:0}#filters label select{width:100%;min-width:0}#filters #search-reset{grid-column:1/-1;justify-self:start;font-size:12px;min-height:32px}
+.sync-control{display:flex;align-items:center;flex:none}.sync-control #online-sync{min-height:36px;height:36px;font-size:13px;padding:0 10px;border-radius:8px 0 0 8px;white-space:nowrap}.sync-control #sync-menu-toggle{position:relative;height:36px;min-height:36px;padding:0 10px;border-left:0;border-radius:0 8px 8px 0}.sync-control .ui-caret{margin-left:0}
+.diagnostic-dot{position:absolute;top:4px;right:3px;width:6px;height:6px;border-radius:50%;background:var(--orange,#eda86e)}
+#online-sync[aria-busy="true"]::before{content:"";display:inline-block;width:10px;height:10px;border:2px solid var(--app-line);border-top-color:var(--app-focus);border-radius:50%;margin-right:6px;vertical-align:-2px;animation:calendar-spin .8s linear infinite}@keyframes calendar-spin{to{transform:rotate(360deg)}}
+.loading-placeholder{border:1px solid var(--app-line);border-radius:14px;padding:20px;background:var(--app-panel);min-height:170px;display:flex;flex-direction:column;gap:16px}.loading-placeholder i{height:12px;background:var(--bg-muted);border-radius:4px;width:65%}.loading-placeholder i:nth-child(2){width:85%}.loading-placeholder i:nth-child(3){width:45%}
+.settings-theme-row{display:flex;align-items:center;justify-content:space-between;padding:8px 10px;border-top:1px solid var(--app-line);font-size:12px;color:var(--muted)}.settings-theme-row button{font-size:12px;min-height:32px;padding:4px 10px}
+.side{height:calc(100dvh - var(--sidebar-top,64px) - 16px);max-height:none;min-height:0;display:flex;flex-direction:column;overflow:hidden;box-sizing:border-box}.side-toolbar{flex:none}.side .crumb{flex:none}.side #side-content{flex:1;min-height:0;overflow-y:auto;overscroll-behavior:contain;scrollbar-width:thin}.side #side-content:has(>.side-empty:only-child){display:flex;justify-content:center;align-items:center}.side-empty{max-width:280px}.side-empty strong{font-size:16px}.side:has(#side-content>.side-empty:only-child) .crumb:empty{display:none}
+.date-button.today-date:not(.selected-date){box-shadow:inset 0 -2px var(--app-focus)}.heat-cell[data-today="true"]:not(.selected){box-shadow:inset 0 0 0 1.5px var(--app-focus)}
+.diagnostics-dialog{width:min(620px,calc(100% - 32px));max-height:85dvh}.diagnostics-content h3{font-size:13px;margin:18px 0 10px}.diagnostic-summary{display:grid;grid-template-columns:110px minmax(0,1fr);gap:9px 12px;margin:0 0 16px;font-size:12px;line-height:20px}.diagnostic-summary dt{color:var(--muted)}.diagnostic-summary dd{margin:0;overflow-wrap:anywhere}.diagnostics-content details{border-top:1px solid var(--app-line);padding-top:12px;margin-top:12px}.diagnostics-content summary{cursor:pointer;font-size:12px}.diagnostics-content pre{max-height:260px;overflow:auto}.diagnostic-note{color:var(--muted);font-size:12px;line-height:20px}
+@media(max-width:680px){.tools.unified-tools>.search-wrap{flex:0 0 230px;min-width:230px}.toolbar-popover{max-width:calc(100vw - 24px)}#filters.toolbar-popover{grid-template-columns:1fr}.side{display:none;position:fixed;inset:8px;top:8px;width:auto;height:calc(100dvh - 16px);z-index:80;box-shadow:0 0 0 100vmax rgba(0,0,0,.45);padding:14px}.side.side-panel-open{display:flex}.side #side-content{overflow-y:auto}.diagnostic-summary{grid-template-columns:88px minmax(0,1fr)}}
+@media(prefers-reduced-motion:reduce){#online-sync[aria-busy="true"]::before{animation:none}}
