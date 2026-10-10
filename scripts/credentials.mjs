@@ -1,4 +1,1 @@
-import {randomBytes,scryptSync} from 'node:crypto';import readline from 'node:readline';
-if(!process.stdin.isTTY){console.error('Use an interactive terminal; secrets must not be passed as arguments.');process.exit(1);}
-process.stdout.write('设置日历访问口令（至少 14 字符，输入不回显）：');readline.emitKeypressEvents(process.stdin);process.stdin.setRawMode(true);let password='';
-process.stdin.on('keypress',(_,key)=>{if(key?.ctrl&&key.name==='c'){process.stdin.setRawMode(false);process.exit(1);}if(key?.name==='backspace'){password=password.slice(0,-1);return;}if(key?.name==='return'){process.stdin.setRawMode(false);process.stdin.pause();if(password.length<14||password.length>256){console.error('\n口令长度应为 14–256 字符。');process.exit(1);}const salt=randomBytes(16).toString('hex');console.log('\n仅复制到本地 .env.local 或 Vercel 环境变量，不要提交 GitHub：');console.log('APP_PASSWORD_HASH=scrypt$'+salt+'$'+scryptSync(password,salt,32).toString('hex'));console.log('SESSION_SECRET='+randomBytes(32).toString('base64url'));console.log('CRON_SECRET='+randomBytes(32).toString('base64url'));process.exit(0);}if(!key?.ctrl&&_&&password.length<256)password+=_;});
+console.log('v1.2.0 已移除应用登录，无需生成应用口令、哈希或会话密钥。');
