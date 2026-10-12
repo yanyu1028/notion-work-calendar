@@ -1,7 +1,7 @@
 {
-  "appVersion": "1.4.0",
+  "appVersion": "1.4.1",
   "mappingVersion": 2,
-  "preparedAt": "2026-10-10T13:51:18.266946+00:00",
+  "preparedAt": "2026-10-12T03:16:20.151406+00:00",
   "engineeringComplete": true,
   "cloudPublished": false,
   "liveRedisVerified": false,
@@ -22,7 +22,7 @@
       "390x850",
       "320x850"
     ],
-    "passed": 26,
+    "passed": 32,
     "javascriptErrors": [],
     "data": "35 synthetic records; no live Notion/Redis"
   },
@@ -31,5 +31,12 @@
   "automaticOldMappingFullRebuild": true,
   "oldSnapshotRetainedUntilCommit": true,
   "graphCacheTouched": false,
-  "cronEnabledByDefault": false
+  "cronEnabledByDefault": false,
+  "uiChanges": [
+    "sticky toolbar",
+    "owner hidden, personnel retained",
+    "note removed",
+    "China creation time",
+    "last-two breadcrumb"
+  ]
 }
