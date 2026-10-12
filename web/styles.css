@@ -605,3 +605,14 @@ label{font-size:12px;color:var(--muted);display:flex;flex-direction:column;gap:4
 
 /* v1.4 field-only additions; preserve existing toolbar/calendar layout. */
 .attachment-link{display:block;overflow-wrap:anywhere;margin:0 0 6px}.field-value.long{white-space:pre-wrap;overflow-wrap:anywhere}
+
+/* v1.4.1: sticky toolbar with separately scrolling inner row. */
+:root{--toolbar-height:50px;--side-sticky-top:62px}
+.toolbar-shell{position:sticky;top:0;z-index:60;background:var(--app-bg);padding:8px 0 6px;margin:-8px 0 8px;border-bottom:1px solid transparent}
+.toolbar-shell.is-stuck{border-bottom-color:var(--app-line)}
+.toolbar-shell>.tools.unified-tools{margin-bottom:0;position:relative}
+html{scroll-padding-top:calc(var(--toolbar-height) + 12px)}
+[data-day],[data-record]{scroll-margin-top:calc(var(--toolbar-height) + 12px)}
+.side{top:var(--side-sticky-top)}
+.side .crumb{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;overflow-wrap:normal;min-width:0;flex-shrink:0}
+@media(max-width:680px){.side{top:8px}}
